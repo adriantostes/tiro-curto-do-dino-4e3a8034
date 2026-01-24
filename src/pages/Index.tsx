@@ -209,7 +209,7 @@ const Index = () => {
           </div>
           <div className="leading-tight">
             <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
-            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">TIRO CURTO DO DINO</p>
+            <p className="font-display text-base sm:text-lg font-semibold tracking-[0.24em]">TIRO CURTO DO DINO</p>
           </div>
         </div>
 
@@ -227,16 +227,16 @@ const Index = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
-        <section className="relative overflow-x-hidden overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
+        <section className="relative overflow-x-hidden overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass-noise glass-glow stadium-glow scanlines cut-corners animate-enter">
           {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
           <div
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
             aria-hidden
           />
 
-            <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+            <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center animate-hud-flicker">
             <header>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-[0.95] tracking-widest">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[0.95] tracking-[0.18em]">
                 TIRO CURTO DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
@@ -261,9 +261,9 @@ const Index = () => {
                   <Button
                     onClick={handleSearch}
                     disabled={searchQuery.isFetching}
-                    className="min-h-[56px] h-auto w-full shrink-0 rounded-2xl px-6 text-base font-semibold tracking-wide focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-auto"
+                    className="min-h-[56px] h-auto w-full shrink-0 rounded-none cut-corners skew-wrap px-6 text-base font-semibold tracking-[0.16em] focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-auto"
                   >
-                    BUSCAR
+                    <span className="skew-inner">BUSCAR</span>
                   </Button>
                 </div>
 
@@ -292,21 +292,21 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D do Tiro Curto do Dino"
                 loading="lazy"
-                className="relative z-20 mx-auto w-[340px] max-w-full translate-y-0 object-contain sm:w-[440px] sm:-translate-y-6 md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.12] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-20 mx-auto w-[380px] max-w-full object-contain sm:w-[520px] sm:-translate-y-10 md:w-[760px] md:max-w-[52vw] md:translate-x-20 md:-translate-y-16 md:scale-[1.18] animate-float drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
         </section>
 
         <section className="mt-8 grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
-          <Card className="glass rounded-3xl p-6 md:p-8">
+          <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-6 md:p-8">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <h2 className="font-display text-2xl font-semibold tracking-wide">Selecione seu time</h2>
+                <h2 className="font-display text-2xl font-semibold tracking-[0.14em]">Selecione seu time</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Busca via backend (sem CORS/bloqueio) com visual premium.</p>
               </div>
-              <Button variant="secondary" asChild className="rounded-2xl">
-                <Link to="/ranking">VER RANKING</Link>
+              <Button variant="secondary" asChild className="rounded-none cut-corners skew-wrap">
+                <Link to="/ranking" className="skew-inner">VER RANKING</Link>
               </Button>
             </div>
 
@@ -326,7 +326,7 @@ const Index = () => {
                           setSelected(t);
                           setParticipantId(null);
                         }}
-                        className={`glass rounded-2xl px-4 py-3 text-left transition hover:translate-y-[-1px] ${
+                        className={`glass-noise cut-corners rounded-2xl px-4 py-3 text-left transition hover:translate-y-[-1px] ${
                           isSelected ? "ring-2 ring-primary/40" : "ring-1 ring-border/60"
                         }`}
                       >
@@ -350,7 +350,7 @@ const Index = () => {
 
             {selected ? (
               <div className="mt-6 animate-enter">
-                <Card className="glass rounded-3xl p-5">
+                <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
                       <div className="h-14 w-14 overflow-hidden rounded-2xl bg-muted ring-1 ring-border">
@@ -377,9 +377,11 @@ const Index = () => {
                     <Button
                       onClick={handleJoin}
                       disabled={joining}
-                      className="h-12 rounded-2xl px-6 font-semibold tracking-wide"
+                      className="h-12 rounded-none cut-corners skew-wrap px-6 font-semibold tracking-[0.14em] animate-neon-pulse"
                     >
-                      QUERO PARTICIPAR (R$ 10,00)
+                      <span className="skew-inner">
+                        QUERO PARTICIPAR <span className="text-glow">(R$ 10,00)</span>
+                      </span>
                     </Button>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
@@ -390,8 +392,8 @@ const Index = () => {
             ) : null}
           </Card>
 
-          <Card className="glass rounded-3xl p-6 md:p-8">
-            <h3 className="font-display text-xl font-semibold tracking-wide">Como funciona</h3>
+          <Card className="glass-noise glass-glow scanlines cut-corners rounded-3xl p-6 md:p-8">
+            <h3 className="font-display text-xl font-semibold tracking-[0.14em]">Como funciona</h3>
             <ol className="mt-5 space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
@@ -426,9 +428,9 @@ const Index = () => {
       </main>
 
       <Dialog open={pixOpen} onOpenChange={setPixOpen}>
-        <DialogContent className="glass glass-glow max-w-md rounded-3xl">
+        <DialogContent className="glass-noise glass-glow stadium-glow scanlines cut-corners max-w-md rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="font-display tracking-widest">PAGUE COM PIX</DialogTitle>
+            <DialogTitle className="font-display tracking-[0.18em]">PAGUE COM PIX</DialogTitle>
             <DialogDescription>
               Status: <span className="text-foreground">{pixStatus ?? "pending"}</span>
             </DialogDescription>
@@ -454,7 +456,7 @@ const Index = () => {
           <DialogFooter className="gap-2 sm:gap-3">
             <Button
               variant="secondary"
-              className="rounded-2xl"
+                className="rounded-none cut-corners skew-wrap"
               onClick={async () => {
                 if (!pixCopyPaste) return;
                 try {
@@ -466,16 +468,16 @@ const Index = () => {
               }}
               disabled={!pixCopyPaste}
             >
-              COPIAR CÓDIGO
+                <span className="skew-inner">COPIAR CÓDIGO</span>
             </Button>
             <Button
-              className="rounded-2xl"
+                className="rounded-none cut-corners skew-wrap animate-neon-pulse"
               onClick={() => {
                 setPixOpen(false);
                 navigate("/ranking");
               }}
             >
-              VER RANKING
+                <span className="skew-inner">VER RANKING</span>
             </Button>
           </DialogFooter>
         </DialogContent>
