@@ -233,7 +233,7 @@ const Index = () => {
   }, [pixOpen, pixStatus, user?.id, currentRound, participantId]);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden no-scrollbar">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
