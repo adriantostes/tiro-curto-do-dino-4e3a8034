@@ -193,7 +193,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
@@ -219,7 +219,7 @@ const Index = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <section className="relative overflow-visible rounded-3xl p-6 md:p-10 glass glass-glow animate-enter">
+        <section className="relative overflow-x-clip overflow-y-visible rounded-3xl p-6 md:p-10 glass glass-glow animate-enter">
           <div
             className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
             aria-hidden
@@ -283,7 +283,7 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative z-20 mx-auto w-[640px] max-w-[98vw] translate-x-6 -translate-y-4 scale-[1.22] md:translate-x-14 md:-translate-y-6 md:scale-[1.34] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-20 mx-auto w-[520px] max-w-[92vw] -translate-y-10 scale-[1.18] sm:w-[560px] sm:-translate-y-12 md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
