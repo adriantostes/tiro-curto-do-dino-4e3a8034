@@ -361,7 +361,7 @@ const Index = () => {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-[0.14em]">Selecione seu time</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Busca via backend (sem CORS/bloqueio) com visual premium.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Encontre seu time e garanta sua vaga na rodada.</p>
               </div>
               <Button variant="secondary" asChild className="rounded-none cut-corners skew-wrap">
                 <Link to="/ranking">
