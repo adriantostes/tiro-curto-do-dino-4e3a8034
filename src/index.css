@@ -147,9 +147,30 @@ All colors MUST be HSL.
     background-image:
       radial-gradient(900px 420px at 18% 0%, hsl(var(--primary) / 0.11), transparent 62%),
       radial-gradient(900px 420px at 88% 0%, hsl(var(--primary) / 0.08), transparent 62%),
-      linear-gradient(30deg, hsl(var(--pattern-ink) / var(--pattern-opacity)) 12%, transparent 12.5%, transparent 87%, hsl(var(--pattern-ink) / var(--pattern-opacity)) 87.5%, hsl(var(--pattern-ink) / var(--pattern-opacity))),
-      linear-gradient(150deg, hsl(var(--pattern-ink) / var(--pattern-opacity)) 12%, transparent 12.5%, transparent 87%, hsl(var(--pattern-ink) / var(--pattern-opacity)) 87.5%, hsl(var(--pattern-ink) / var(--pattern-opacity))),
-      linear-gradient(90deg, hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7)) 2%, transparent 2.5%, transparent 97%, hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7)) 97.5%, hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7))),
+      linear-gradient(
+        30deg,
+        hsl(var(--pattern-ink) / var(--pattern-opacity)) 12%,
+        transparent 12.5%,
+        transparent 87%,
+        hsl(var(--pattern-ink) / var(--pattern-opacity)) 87.5%,
+        hsl(var(--pattern-ink) / var(--pattern-opacity))
+      ),
+      linear-gradient(
+        150deg,
+        hsl(var(--pattern-ink) / var(--pattern-opacity)) 12%,
+        transparent 12.5%,
+        transparent 87%,
+        hsl(var(--pattern-ink) / var(--pattern-opacity)) 87.5%,
+        hsl(var(--pattern-ink) / var(--pattern-opacity))
+      ),
+      linear-gradient(
+        90deg,
+        hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7)) 2%,
+        transparent 2.5%,
+        transparent 97%,
+        hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7)) 97.5%,
+        hsl(var(--pattern-ink) / calc(var(--pattern-opacity) * 0.7))
+      ),
       repeating-linear-gradient(135deg, hsl(var(--pattern-ink) / 0.035) 0 2px, transparent 2px 8px),
       repeating-linear-gradient(45deg, hsl(var(--pattern-ink) / 0.03) 0 1px, transparent 1px 9px);
     background-size:
@@ -215,14 +236,23 @@ All colors MUST be HSL.
     pointer-events: none;
     background:
       radial-gradient(70% 52% at 50% 18%, hsl(var(--primary) / 0.22), transparent 62%),
-      radial-gradient(120% 70% at 50% 120%, hsl(var(--primary) / 0.10), transparent 60%),
-      radial-gradient(50% 40% at 8% 30%, hsl(var(--primary) / 0.20), transparent 60%),
-      radial-gradient(50% 40% at 92% 30%, hsl(var(--primary) / 0.20), transparent 60%);
+      radial-gradient(120% 70% at 50% 120%, hsl(var(--primary) / 0.1), transparent 60%),
+      radial-gradient(50% 40% at 8% 30%, hsl(var(--primary) / 0.2), transparent 60%),
+      radial-gradient(50% 40% at 92% 30%, hsl(var(--primary) / 0.2), transparent 60%);
     opacity: 0.95;
   }
 
   .cut-corners {
-    clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px);
+    clip-path: polygon(
+      14px 0%,
+      calc(100% - 14px) 0%,
+      100% 14px,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      14px 100%,
+      0% calc(100% - 14px),
+      0% 14px
+    );
   }
 
   .skew-wrap {
@@ -247,7 +277,12 @@ All colors MUST be HSL.
     inset: 0;
     pointer-events: none;
     border-radius: inherit;
-    background: repeating-linear-gradient(to bottom, transparent 0px, transparent 6px, hsl(var(--foreground) / 0.025) 7px);
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 6px,
+      hsl(var(--foreground) / 0.025) 7px
+    );
     mix-blend-mode: overlay;
     opacity: 0.65;
   }
@@ -282,4 +317,15 @@ All colors MUST be HSL.
   body.no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
+a[href*="lovable.dev"],
+iframe[src*="lovable.dev"],
+div[style*="Edit with Lovable"],
+.lovable-badge {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  z-index: -9999 !important;
 }
