@@ -6,6 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
 import dinoHero from "@/assets/dino-hero-cutout.png";
 import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
+import { QRCodeCanvas } from "qrcode.react";
 
 const Index = () => {
   const { toast } = useToast();
@@ -23,6 +32,9 @@ const Index = () => {
   const [selected, setSelected] = useState<CartolaTeamSearchItem | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [pixOpen, setPixOpen] = useState(false);
+  const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
+  const [pixStatus, setPixStatus] = useState<string | null>(null);
 
   const { src: dinoSrc } = useChromaKeyImage(dinoHero, {
     // remove black-ish background when the asset doesn't ship with alpha
@@ -132,33 +144,6 @@ const Index = () => {
     toast({ title: "Time confirmado", description: "Agora você pode simular o pagamento da rodada." });
   }
 
-  async function handleSimulatePayment() {
-    if (!user) return;
-    if (!participantId) {
-      toast({ title: "Confirme seu time primeiro" });
-      return;
-    }
-    if (!currentRound) {
-      toast({ title: "Não consegui detectar a rodada atual" });
-      return;
-    }
-
-    const { error } = await supabase.from("payments").insert({
-      user_id: user.id,
-      participant_id: participantId,
-      round_number: currentRound,
-      amount_cents: 1000,
-      status: "approved",
-    });
-
-    if (error) {
-      toast({ title: "Falha ao simular pagamento", description: error.message });
-      return;
-    }
-
-    toast({ title: "Pagamento aprovado (simulado)", description: "Ranking liberado para esta rodada." });
-  }
-
   async function handleJoin() {
     if (!user) {
       toast({ title: "Entre para continuar" });
@@ -197,20 +182,19 @@ const Index = () => {
         return;
       }
 
-      const { error } = await supabase.from("payments").insert({
-        user_id: user.id,
-        participant_id: pid,
-        round_number: currentRound,
-        amount_cents: 1000,
-        status: "approved",
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix", {
+        body: { participantId: pid, round: currentRound },
       });
+
       if (error) {
-        toast({ title: "Falha ao simular pagamento", description: error.message });
+        toast({ title: "Falha ao gerar PIX", description: error.message });
         return;
       }
 
-      toast({ title: "Vaga garantida (simulado)", description: "Ranking liberado para esta rodada." });
-      navigate("/ranking");
+      setPixCopyPaste((data as any)?.pixCopyPaste ?? null);
+      setPixStatus((data as any)?.status ?? "pending");
+      setPixOpen(true);
+      toast({ title: "PIX gerado", description: "Pague para liberar o Ranking Ao Vivo." });
     } finally {
       setJoining(false);
     }
@@ -399,7 +383,7 @@ const Index = () => {
                     </Button>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Para teste: este botão confirma seu time e aprova o pagamento automaticamente.
+                    Ao clicar, vamos gerar o PIX (QR + copia/cola) para pagamento desta rodada.
                   </p>
                 </Card>
               </div>
@@ -424,7 +408,7 @@ const Index = () => {
                 </span>
                 <div>
                   <p className="font-medium">Confirmar + pagar</p>
-                  <p className="text-muted-foreground">No teste, o Pix é simulado (R$ 10,00).</p>
+                  <p className="text-muted-foreground">Geramos o PIX (R$ 10,00) e liberamos após aprovação.</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
@@ -440,6 +424,62 @@ const Index = () => {
           </Card>
         </section>
       </main>
+
+      <Dialog open={pixOpen} onOpenChange={setPixOpen}>
+        <DialogContent className="glass glass-glow max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="font-display tracking-widest">PAGUE COM PIX</DialogTitle>
+            <DialogDescription>
+              Status: <span className="text-foreground">{pixStatus ?? "pending"}</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {pixCopyPaste ? (
+            <div className="grid gap-4">
+              <div className="mx-auto rounded-2xl bg-background p-3 ring-1 ring-border">
+                <QRCodeCanvas value={pixCopyPaste} size={220} includeMargin />
+              </div>
+
+              <div className="grid gap-2">
+                <Label className="text-sm">Pix copia e cola</Label>
+                <div className="glass rounded-2xl p-3 ring-1 ring-border/60">
+                  <p className="break-all text-xs text-muted-foreground">{pixCopyPaste}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Não consegui carregar o código PIX.</p>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-3">
+            <Button
+              variant="secondary"
+              className="rounded-2xl"
+              onClick={async () => {
+                if (!pixCopyPaste) return;
+                try {
+                  await navigator.clipboard.writeText(pixCopyPaste);
+                  toast({ title: "Copiado" });
+                } catch {
+                  toast({ title: "Não consegui copiar", description: "Copie manualmente o código PIX." });
+                }
+              }}
+              disabled={!pixCopyPaste}
+            >
+              COPIAR CÓDIGO
+            </Button>
+            <Button
+              className="rounded-2xl"
+              onClick={() => {
+                setPixOpen(false);
+                navigate("/ranking");
+              }}
+            >
+              VER RANKING
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
