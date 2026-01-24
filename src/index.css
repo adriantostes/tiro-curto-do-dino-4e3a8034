@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap");
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
+    --font-sans: Inter;
+    --font-display: Rajdhani;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
@@ -98,6 +102,9 @@ All colors MUST be HSL.
     --winner-gold: 45 100% 55%;
     --winner-silver: 210 6% 75%;
     --winner-bronze: 28 85% 55%;
+
+    --font-sans: Inter;
+    --font-display: Rajdhani;
   }
 }
 
@@ -107,6 +114,33 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply border border-border/60 bg-card/40 backdrop-blur-xl;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.08),
+      0 22px 60px -24px hsl(var(--primary) / 0.25);
+  }
+
+  .glass-glow {
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.18),
+      0 0 0 6px hsl(var(--primary) / 0.06),
+      0 22px 60px -24px hsl(var(--primary) / 0.35);
+  }
+
+  .story-link {
+    @apply relative inline-block;
+  }
+  .story-link::after {
+    content: "";
+    @apply absolute bottom-0 left-0 h-0.5 w-full origin-bottom-right scale-x-0 bg-primary transition-transform duration-300;
+  }
+  .story-link:hover::after {
+    @apply origin-bottom-left scale-x-100;
   }
 }
