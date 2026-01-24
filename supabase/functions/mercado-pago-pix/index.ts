@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
 
     const amount = 10; // R$ 10,00
     const externalReference = `liga-do-dino:${userData.user.id}:${body.participantId}:${body.round}`;
+    const idempotencyKey = crypto.randomUUID();
 
     // Create PIX payment in Mercado Pago
     const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -99,6 +100,8 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${mpAccessToken}`,
         "Content-Type": "application/json",
+        // Mercado Pago exige esse header em algumas contas/configurações.
+        "X-Idempotency-Key": idempotencyKey,
       },
       body: JSON.stringify({
         transaction_amount: amount,
