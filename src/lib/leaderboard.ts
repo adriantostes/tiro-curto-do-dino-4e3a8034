@@ -9,6 +9,11 @@ export type LeaderboardParticipant = {
   league_id: string | null;
 };
 
+export type LeaderboardResponse = {
+  paid: boolean;
+  participants: LeaderboardParticipant[];
+};
+
 export async function fetchPaidParticipants(params: { round: number; leagueId?: string | null }) {
   const { data, error } = await supabase.functions.invoke("leaderboard", {
     body: {
@@ -18,6 +23,7 @@ export async function fetchPaidParticipants(params: { round: number; leagueId?: 
   });
   if (error) throw error;
 
-  const participants = (data as any)?.participants as LeaderboardParticipant[] | undefined;
-  return participants ?? [];
+  const paid = Boolean((data as any)?.paid);
+  const participants = ((data as any)?.participants as LeaderboardParticipant[] | undefined) ?? [];
+  return { paid, participants } satisfies LeaderboardResponse;
 }

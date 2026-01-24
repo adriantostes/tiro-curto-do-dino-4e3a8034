@@ -24,9 +24,8 @@ type LiveEntry = {
   points: number;
 };
 
-function isNotPaidError(err: unknown) {
-  const msg = typeof (err as any)?.message === "string" ? (err as any).message : "";
-  return msg.includes("403") || msg.toLowerCase().includes("pagamento não aprovado");
+function isPaidResponse(data: any): data is { paid: boolean; participants: LeaderboardParticipant[] } {
+  return data && typeof data === "object" && typeof data.paid === "boolean" && Array.isArray(data.participants);
 }
 
 const Ranking = () => {
@@ -57,7 +56,7 @@ const Ranking = () => {
   const participantsQuery = useQuery({
     queryKey: ["leaderboard", "participants", currentRound, league?.id],
     queryFn: async () => {
-      if (!currentRound) return [];
+      if (!currentRound) return { paid: false, participants: [] };
       return await fetchPaidParticipants({ round: currentRound, leagueId: league?.id ?? null });
     },
     enabled: !!user && !!currentRound,
@@ -65,10 +64,17 @@ const Ranking = () => {
     refetchInterval: 60_000,
   });
 
+  const paidInfo = useMemo(() => {
+    if (!participantsQuery.data) return { paid: false, participants: [] as LeaderboardParticipant[] };
+    if (isPaidResponse(participantsQuery.data)) return participantsQuery.data;
+    // safety fallback (shouldn't happen)
+    return { paid: false, participants: [] as LeaderboardParticipant[] };
+  }, [participantsQuery.data]);
+
   const scoresQuery = useQuery({
-    queryKey: ["leaderboard", "scores", currentRound, league?.id, participantsQuery.data?.map((p) => p.id).join(",")],
+    queryKey: ["leaderboard", "scores", currentRound, league?.id, paidInfo.participants.map((p) => p.id).join(",")],
     queryFn: async () => {
-      const participants = participantsQuery.data ?? [];
+      const participants = paidInfo.participants;
       if (!currentRound || participants.length === 0) return [] as LiveEntry[];
 
       const results = await Promise.all(
@@ -85,7 +91,7 @@ const Ranking = () => {
 
       return results.sort((a, b) => b.points - a.points);
     },
-    enabled: !!user && !!currentRound && (participantsQuery.data?.length ?? 0) > 0,
+    enabled: !!user && !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
     staleTime: 10_000,
     refetchInterval: 60_000,
   });
@@ -129,7 +135,7 @@ const Ranking = () => {
           <Separator />
 
           <div className="p-6">
-            {participantsQuery.isError && isNotPaidError(participantsQuery.error) ? (
+            {participantsQuery.isSuccess && !paidInfo.paid ? (
               <Card className="glass-noise scanlines cut-corners rounded-2xl p-5">
                 <p className="font-display text-base font-semibold tracking-[0.12em]">ACESSO BLOQUEADO</p>
                 <p className="mt-2 text-sm text-muted-foreground">

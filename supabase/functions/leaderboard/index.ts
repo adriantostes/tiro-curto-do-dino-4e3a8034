@@ -63,7 +63,10 @@ Deno.serve(async (req) => {
       console.error("leaderboard paid check error", paidErr);
       return json({ error: "Falha ao validar pagamento" }, { status: 500 });
     }
-    if (!isPaid) return json({ error: "Pagamento não aprovado para a rodada" }, { status: 403 });
+    // IMPORTANT: Don't return 403 here.
+    // Some clients treat non-2xx from functions as a hard runtime error (blank screen).
+    // We return 200 with a clear flag so the UI can render a paywall state.
+    if (!isPaid) return json({ paid: false, participants: [] }, { status: 200 });
 
     // Service client (to read all approved participants)
     const serviceClient = createClient(supabaseUrl, serviceKey);
@@ -81,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const ids = Array.from(new Set((payments ?? []).map((p) => p.participant_id).filter(Boolean)));
-    if (ids.length === 0) return json({ participants: [] }, { status: 200 });
+    if (ids.length === 0) return json({ paid: true, participants: [] }, { status: 200 });
 
     let query = serviceClient
       .from("participants")
@@ -96,7 +99,7 @@ Deno.serve(async (req) => {
       return json({ error: "Falha ao carregar participantes" }, { status: 500 });
     }
 
-    return json({ participants: participants ?? [] }, { status: 200 });
+    return json({ paid: true, participants: participants ?? [] }, { status: 200 });
   } catch (e) {
     console.error("leaderboard exception", e);
     return json({ error: "Erro interno" }, { status: 500 });
