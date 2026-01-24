@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Ranking from "./pages/Ranking";
 import Auth from "./pages/Auth";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -20,14 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route
-            path="/ranking"
-            element={
-              <ProtectedRoute>
-                <Ranking />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/ranking" element={<Ranking />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
