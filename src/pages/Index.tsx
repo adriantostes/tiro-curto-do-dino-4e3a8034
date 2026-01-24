@@ -276,7 +276,7 @@ const Index = () => {
 
             <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center animate-hud-flicker">
             <header>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[0.95] tracking-[0.18em]">
+              <h1 className="font-display font-extrabold leading-[0.95] whitespace-nowrap text-[clamp(1.6rem,6.2vw,3.75rem)] tracking-[0.12em] sm:tracking-[0.18em]">
                 TIRO CURTO DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
