@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
-import dinoHero from "@/assets/dino-hero-tiro-curto.png";
+import dinoHero from "@/assets/dino-hero-cutout.png";
 import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
 
 const Index = () => {
@@ -95,16 +95,39 @@ const Index = () => {
       team_shield_url: shield,
     };
 
-    const { data, error } = await supabase
-      .from("participants")
-      .insert(payload)
-      .select("id")
-      .maybeSingle();
+    const { data, error } = await supabase.from("participants").insert(payload).select("id").maybeSingle();
 
     if (error) {
+      // Unicidade global por liga+time: se já existir, mostramos uma mensagem melhor.
+      // (evita parecer "bug" quando alguém tenta cadastrar um time já usado)
+      if ((error as any)?.code === "23505") {
+        // Se o time já é deste usuário, recupera o id e segue o fluxo.
+        const { data: existing, error: existingErr } = await supabase
+          .from("participants")
+          .select("id")
+          .eq("league_id", league.id)
+          .eq("cartola_team_id", selected.time_id)
+          .eq("user_id", user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (!existingErr && existing?.id) {
+          setParticipantId(existing.id);
+          toast({ title: "Time já confirmado", description: "Seu time já está cadastrado na liga." });
+          return;
+        }
+
+        toast({
+          title: "Time já escolhido",
+          description: "Esse time já foi cadastrado por outra pessoa na liga. Escolha outro.",
+        });
+        return;
+      }
+
       toast({ title: "Não consegui salvar seu time", description: error.message });
       return;
     }
+
     setParticipantId(data?.id ?? null);
     toast({ title: "Time confirmado", description: "Agora você pode simular o pagamento da rodada." });
   }
@@ -202,7 +225,7 @@ const Index = () => {
           </div>
           <div className="leading-tight">
             <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
-            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">LIGA DO DINO</p>
+            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">TIRO CURTO DO DINO</p>
           </div>
         </div>
 
@@ -230,7 +253,7 @@ const Index = () => {
             <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
             <header>
               <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-[0.95] tracking-widest">
-                LIGA DO DINO
+                TIRO CURTO DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
                 Selecione seu time, garanta sua vaga e acompanhe o <span className="text-foreground">Ranking Ao Vivo</span>
@@ -283,7 +306,7 @@ const Index = () => {
               <div className="pointer-events-none absolute -inset-10 rounded-[2.8rem] opacity-60 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.28),transparent_62%)]" />
               <img
                 src={dinoSrc}
-                alt="Mascote dinossauro 3D da Liga do Dino"
+                alt="Mascote dinossauro 3D do Tiro Curto do Dino"
                 loading="lazy"
                 className="relative z-20 mx-auto w-[340px] max-w-full translate-y-0 object-contain sm:w-[440px] sm:-translate-y-6 md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.12] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
