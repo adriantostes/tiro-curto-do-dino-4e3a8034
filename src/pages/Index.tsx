@@ -240,8 +240,8 @@ const Index = () => {
                 TIRO CURTO DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
-                Selecione seu time, garanta sua vaga e acompanhe o <span className="text-foreground">Ranking Ao Vivo</span>
-                em tempo real.
+                Selecione seu time, garanta sua vaga e acompanhe o{" "}
+                <span className="text-foreground">Ranking Ao Vivo</span> em tempo real.
               </p>
 
               <div className="mt-6 sm:mt-7 grid gap-4 sm:gap-3 min-w-0">
@@ -306,7 +306,9 @@ const Index = () => {
                 <p className="mt-1 text-sm text-muted-foreground">Busca via backend (sem CORS/bloqueio) com visual premium.</p>
               </div>
               <Button variant="secondary" asChild className="rounded-none cut-corners skew-wrap">
-                <Link to="/ranking" className="skew-inner">VER RANKING</Link>
+                <Link to="/ranking">
+                  <span className="skew-inner">VER RANKING</span>
+                </Link>
               </Button>
             </div>
 
