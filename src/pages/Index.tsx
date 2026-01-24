@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
-import dinoHero from "@/assets/dino-hero.png";
+import dinoHero from "@/assets/dino-hero-cutout.png";
 
 const Index = () => {
   const { toast } = useToast();
@@ -217,7 +217,7 @@ const Index = () => {
             aria-hidden
           />
 
-          <div className="relative grid gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+            <div className="relative grid gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
             <header>
               <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-widest md:text-6xl">
                 LIGA DO DINO
@@ -269,13 +269,13 @@ const Index = () => {
               ) : null}
             </header>
 
-            <div className="relative">
-              <div className="pointer-events-none absolute -inset-6 rounded-[2.5rem] opacity-55 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.24),transparent_60%)]" />
+            <div className="relative md:justify-self-end">
+              <div className="pointer-events-none absolute -inset-10 rounded-[2.8rem] opacity-60 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.28),transparent_62%)]" />
               <img
                 src={dinoHero}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative mx-auto w-full max-w-[420px] drop-shadow-[0_30px_80px_hsl(var(--primary)/0.12)]"
+                className="relative mx-auto w-[560px] max-w-[92vw] translate-y-6 md:translate-x-10 md:translate-y-10 drop-shadow-[0_40px_110px_hsl(var(--primary)/0.18)]"
               />
             </div>
           </div>
