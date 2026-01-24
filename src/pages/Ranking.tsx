@@ -1,21 +1,14 @@
 import { Link } from "react-router-dom";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-
-type MockEntry = {
-  teamName: string;
-  points: number;
-  shieldUrl?: string;
-};
-
-const mock: MockEntry[] = [
-  { teamName: "Dino FC", points: 78.65 },
-  { teamName: "Neon Raptors", points: 72.1 },
-  { teamName: "Tiro Curto SC", points: 69.9 },
-  { teamName: "Cartoleiros BR", points: 63.25 },
-  { teamName: "Ataque Jurássico", points: 59.8 },
-];
+import { useSession } from "@/hooks/useSession";
+import { supabase } from "@/integrations/supabase/client";
+import { cartolaMarketStatus, cartolaTeamScore } from "@/lib/cartola";
+import { extractCartolaTeamPoints } from "@/lib/cartolaPoints";
+import { fetchPaidParticipants, type LeaderboardParticipant } from "@/lib/leaderboard";
 
 function podiumClass(index: number) {
   // Sem cores hardcoded: usa tokens semânticos
@@ -25,13 +18,78 @@ function podiumClass(index: number) {
   return "bg-card ring-1 ring-border";
 }
 
+type LiveEntry = {
+  participant: LeaderboardParticipant;
+  points: number;
+};
+
 const Ranking = () => {
+  const { user } = useSession();
+
+  const { data: market } = useQuery({
+    queryKey: ["cartola", "market_status"],
+    queryFn: cartolaMarketStatus,
+    staleTime: 60_000,
+    enabled: !!user,
+  });
+
+  const currentRound = useMemo(() => {
+    const r = Number((market as any)?.rodada_atual ?? (market as any)?.rodadaAtual);
+    return Number.isFinite(r) && r > 0 ? r : null;
+  }, [market]);
+
+  const { data: league } = useQuery({
+    queryKey: ["leagues", "active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("leagues").select("id,name").limit(1).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const participantsQuery = useQuery({
+    queryKey: ["leaderboard", "participants", currentRound, league?.id],
+    queryFn: async () => {
+      if (!currentRound) return [];
+      return await fetchPaidParticipants({ round: currentRound, leagueId: league?.id ?? null });
+    },
+    enabled: !!user && !!currentRound,
+    staleTime: 10_000,
+    refetchInterval: 60_000,
+  });
+
+  const scoresQuery = useQuery({
+    queryKey: ["leaderboard", "scores", currentRound, league?.id, participantsQuery.data?.map((p) => p.id).join(",")],
+    queryFn: async () => {
+      const participants = participantsQuery.data ?? [];
+      if (!currentRound || participants.length === 0) return [] as LiveEntry[];
+
+      const results = await Promise.all(
+        participants.map(async (p): Promise<LiveEntry> => {
+          try {
+            const score = await cartolaTeamScore(Number(p.cartola_team_id));
+            const points = extractCartolaTeamPoints(score);
+            return { participant: p, points };
+          } catch {
+            return { participant: p, points: 0 };
+          }
+        })
+      );
+
+      return results.sort((a, b) => b.points - a.points);
+    },
+    enabled: !!user && !!currentRound && (participantsQuery.data?.length ?? 0) > 0,
+    staleTime: 10_000,
+    refetchInterval: 60_000,
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="leading-tight">
-          <p className="text-sm text-muted-foreground">Ranking Ao Vivo (teste)</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Liga do Dino</h1>
+          <p className="text-sm text-muted-foreground">Ranking Ao Vivo</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{league?.name ?? "Liga do Dino"}</h1>
         </div>
         <Button variant="secondary" asChild>
           <Link to="/">Voltar</Link>
@@ -44,14 +102,20 @@ const Ranking = () => {
             <div>
               <h2 className="text-lg font-semibold">Ranking Ao Vivo</h2>
               <p className="text-sm text-muted-foreground">
-                Estrutura de UI com dados mockados (sem pagamento/sem validação ainda).
+                Rodada: {currentRound ?? "..."} • Atualiza automaticamente a cada 60s.
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="secondary" disabled>
-                Pagamento via Pix (em breve)
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  participantsQuery.refetch();
+                  scoresQuery.refetch();
+                }}
+                disabled={participantsQuery.isFetching || scoresQuery.isFetching}
+              >
+                Atualizar agora
               </Button>
-              <Button disabled>Atualizar (em breve)</Button>
             </div>
           </div>
 
@@ -65,9 +129,22 @@ const Ranking = () => {
             </div>
 
             <div className="mt-3 space-y-3">
-              {mock.map((entry, idx) => (
+              {scoresQuery.isLoading ? (
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground">Carregando ranking…</p>
+                </Card>
+              ) : (scoresQuery.data?.length ?? 0) === 0 ? (
+                <Card className="p-4">
+                  <p className="text-sm font-medium">Sem participantes pagos nesta rodada</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Volte para a Home, confirme o time e simule o pagamento para liberar o ranking.
+                  </p>
+                </Card>
+              ) : null}
+
+              {(scoresQuery.data ?? []).map((entry, idx) => (
                 <div
-                  key={`${entry.teamName}-${idx}`}
+                  key={`${entry.participant.id}-${idx}`}
                   className={`grid grid-cols-[60px_1fr_100px] items-center gap-3 rounded-xl px-4 py-3 ${podiumClass(
                     idx
                   )}`}
@@ -76,20 +153,28 @@ const Ranking = () => {
 
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-lg bg-muted ring-1 ring-border">
-                      {/* escudo mockado: manter sem assets por enquanto */}
-                      <div
-                        className="h-full w-full [background:radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_60%)]"
-                        aria-hidden
-                      />
+                      {entry.participant.team_shield_url ? (
+                        <img
+                          src={entry.participant.team_shield_url}
+                          alt={`Escudo ${entry.participant.team_name}`}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="h-full w-full [background:radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_60%)]"
+                          aria-hidden
+                        />
+                      )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{entry.teamName}</p>
-                      <p className="text-xs text-muted-foreground">Rodada atual (teste)</p>
+                      <p className="truncate text-sm font-medium">{entry.participant.team_name}</p>
+                      <p className="text-xs text-muted-foreground">ID Cartola: {entry.participant.cartola_team_id}</p>
                     </div>
                   </div>
 
                   <div className="text-right text-sm font-semibold tabular-nums">
-                    {entry.points.toFixed(2)}
+                    {Number(entry.points ?? 0).toFixed(2)}
                   </div>
                 </div>
               ))}
