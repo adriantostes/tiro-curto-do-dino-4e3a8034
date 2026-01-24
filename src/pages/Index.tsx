@@ -211,7 +211,7 @@ const Index = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <section className="relative overflow-hidden rounded-3xl p-6 md:p-10 glass glass-glow animate-enter">
+        <section className="relative overflow-visible rounded-3xl p-6 md:p-10 glass glass-glow animate-enter">
           <div
             className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
             aria-hidden
@@ -275,7 +275,7 @@ const Index = () => {
                 src={dinoHero}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative mx-auto w-[560px] max-w-[92vw] translate-y-6 md:translate-x-10 md:translate-y-10 drop-shadow-[0_40px_110px_hsl(var(--primary)/0.18)]"
+                className="relative z-10 mx-auto w-[640px] max-w-[98vw] translate-x-6 translate-y-10 md:translate-x-20 md:translate-y-14 drop-shadow-[0_48px_140px_hsl(var(--primary)/0.22)]"
               />
             </div>
           </div>
