@@ -116,6 +116,11 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground font-sans;
   }
+
+  html,
+  body {
+    @apply overflow-x-hidden;
+  }
 }
 
 @layer components {
@@ -151,5 +156,16 @@ All colors MUST be HSL.
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Apply scrollbar hiding to the page itself (mobile Safari/Chrome) */
+  html.no-scrollbar,
+  body.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html.no-scrollbar::-webkit-scrollbar,
+  body.no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
