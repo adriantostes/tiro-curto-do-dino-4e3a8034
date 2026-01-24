@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
 import { cartolaMarketStatus, cartolaTeamScore } from "@/lib/cartola";
@@ -88,26 +89,25 @@ const Ranking = () => {
     <div className="min-h-screen bg-background">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="leading-tight">
-          <p className="text-sm text-muted-foreground">Ranking Ao Vivo</p>
-          <h1 className="text-2xl font-semibold tracking-tight">{league?.name ?? "Liga do Dino"}</h1>
+          <p className="text-xs tracking-wide text-muted-foreground">Dashboard • Ranking Ao Vivo</p>
+          <h1 className="font-display text-2xl font-semibold tracking-widest">{league?.name ?? "LIGA DO DINO"}</h1>
         </div>
-        <Button variant="secondary" asChild>
+        <Button variant="secondary" asChild className="rounded-2xl">
           <Link to="/">Voltar</Link>
         </Button>
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <Card className="overflow-hidden">
+        <Card className="glass glass-glow overflow-hidden rounded-3xl animate-enter">
           <div className="flex flex-col gap-2 p-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Ranking Ao Vivo</h2>
-              <p className="text-sm text-muted-foreground">
-                Rodada: {currentRound ?? "..."} • Atualiza automaticamente a cada 60s.
-              </p>
+              <h2 className="font-display text-xl font-semibold tracking-wide">RANKING AO VIVO</h2>
+              <p className="text-sm text-muted-foreground">Rodada: {currentRound ?? "..."} • Auto-refresh 60s.</p>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
+                className="rounded-2xl"
                 onClick={() => {
                   participantsQuery.refetch();
                   scoresQuery.refetch();
@@ -122,22 +122,22 @@ const Ranking = () => {
           <Separator />
 
           <div className="p-6">
-            <div className="grid grid-cols-[60px_1fr_100px] gap-3 text-xs text-muted-foreground">
+            <div className="grid grid-cols-[70px_1fr_120px] gap-3 text-xs text-muted-foreground">
               <div>POS</div>
               <div>TIME</div>
               <div className="text-right">PONTOS</div>
             </div>
 
-            <div className="mt-3 space-y-3">
+            <div className="mt-4 space-y-3">
               {scoresQuery.isLoading ? (
-                <Card className="p-4">
+                <Card className="glass rounded-2xl p-4">
                   <p className="text-sm text-muted-foreground">Carregando ranking…</p>
                 </Card>
               ) : (scoresQuery.data?.length ?? 0) === 0 ? (
-                <Card className="p-4">
+                <Card className="glass rounded-2xl p-4">
                   <p className="text-sm font-medium">Sem participantes pagos nesta rodada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Volte para a Home, confirme o time e simule o pagamento para liberar o ranking.
+                    Volte para a Home, selecione seu time e clique em “QUERO PARTICIPAR”.
                   </p>
                 </Card>
               ) : null}
@@ -145,14 +145,29 @@ const Ranking = () => {
               {(scoresQuery.data ?? []).map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
-                  className={`grid grid-cols-[60px_1fr_100px] items-center gap-3 rounded-xl px-4 py-3 ${podiumClass(
+                  className={`glass grid grid-cols-[70px_1fr_120px] items-center gap-3 rounded-2xl px-4 py-3 transition ${podiumClass(
                     idx
                   )}`}
                 >
-                  <div className="text-sm font-semibold tabular-nums">#{idx + 1}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-sm font-semibold tabular-nums">#{idx + 1}</div>
+                    <span
+                      className={`inline-flex h-6 items-center rounded-full px-2 text-[10px] font-semibold tracking-wide ring-1 ${
+                        idx === 0
+                          ? "bg-primary/15 text-foreground ring-primary/30"
+                          : idx === 1
+                            ? "bg-muted/70 text-muted-foreground ring-border"
+                            : idx === 2
+                              ? "bg-accent/15 text-foreground ring-border"
+                              : "bg-muted/40 text-muted-foreground ring-border"
+                      }`}
+                    >
+                      {idx === 0 ? "GOLD" : idx === 1 ? "SILVER" : idx === 2 ? "BRONZE" : ""}
+                    </span>
+                  </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 overflow-hidden rounded-lg bg-muted ring-1 ring-border">
+                    <div className="h-10 w-10 overflow-hidden rounded-xl bg-muted ring-1 ring-border">
                       {entry.participant.team_shield_url ? (
                         <img
                           src={entry.participant.team_shield_url}
@@ -168,13 +183,13 @@ const Ranking = () => {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{entry.participant.team_name}</p>
+                      <p className="truncate text-sm font-semibold">{entry.participant.team_name}</p>
                       <p className="text-xs text-muted-foreground">ID Cartola: {entry.participant.cartola_team_id}</p>
                     </div>
                   </div>
 
-                  <div className="text-right text-sm font-semibold tabular-nums">
-                    {Number(entry.points ?? 0).toFixed(2)}
+                  <div className="text-right text-base font-semibold tabular-nums">
+                    <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} />
                   </div>
                 </div>
               ))}
