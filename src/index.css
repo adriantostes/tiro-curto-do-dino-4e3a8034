@@ -143,4 +143,13 @@ All colors MUST be HSL.
   .story-link:hover::after {
     @apply origin-bottom-left scale-x-100;
   }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
