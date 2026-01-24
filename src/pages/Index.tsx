@@ -135,7 +135,6 @@ const Index = () => {
 
         if (!existingErr && existing?.id) {
           setParticipantId(existing.id);
-          toast({ title: "Time já confirmado", description: "Seu time já está cadastrado na liga." });
           return;
         }
 
