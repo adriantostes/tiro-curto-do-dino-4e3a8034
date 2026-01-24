@@ -21,6 +21,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
 import dinoHero from "@/assets/dino-hero-cutout.png";
+import ligaDoDinoLogo from "@/assets/liga-do-dino-logo.png";
 import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -42,6 +43,13 @@ const Index = () => {
     // lower values = less aggressive keying (prevents the dino/shadows from becoming transparent)
     threshold: 12,
     feather: 22,
+  });
+
+  const { src: logoSrc } = useChromaKeyImage(ligaDoDinoLogo, {
+    // remove green background from the uploaded logo
+    key: { r: 0, g: 255, b: 136 },
+    threshold: 46,
+    feather: 26,
   });
 
   const { data: market } = useQuery({
@@ -204,8 +212,13 @@ const Index = () => {
     <div className="min-h-screen bg-background overflow-x-hidden no-scrollbar">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
-            <div className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden />
+          <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
+            <img
+              src={logoSrc}
+              alt="Logo Liga do Dino"
+              className="h-[44px] w-[44px] object-contain"
+              loading="lazy"
+            />
           </div>
           <div className="leading-tight">
             <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
