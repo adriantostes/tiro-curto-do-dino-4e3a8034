@@ -283,7 +283,7 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative z-10 mx-auto w-[760px] max-w-[110vw] translate-x-10 translate-y-12 md:translate-x-28 md:translate-y-16 drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-10 mx-auto w-[640px] max-w-[98vw] translate-x-6 translate-y-10 scale-[1.18] md:translate-x-14 md:translate-y-14 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
