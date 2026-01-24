@@ -21,6 +21,14 @@ type Body = {
   round: number;
 };
 
+async function fetchMpPayment(mpAccessToken: string, transactionId: string) {
+  const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${transactionId}`, {
+    headers: { Authorization: `Bearer ${mpAccessToken}` },
+  });
+  const mpJson = await mpRes.json().catch(() => null);
+  return { ok: mpRes.ok, status: mpRes.status, json: mpJson };
+}
+
 function mpStatusToApp(status: string | null | undefined) {
   const s = String(status ?? "").toLowerCase();
   if (s === "approved") return "approved";
@@ -78,11 +86,32 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
+    // If a payment already exists, refresh its status directly from Mercado Pago.
+    // This avoids relying solely on webhooks (which may not be configured during tests).
     if (existing?.id && existing.transaction_id && existing.pix_copy_paste) {
+      let nextStatus = existing.status;
+
+      const mp = await fetchMpPayment(mpAccessToken, String(existing.transaction_id));
+      if (mp.ok) {
+        nextStatus = mpStatusToApp(mp.json?.status);
+        const nextPix = (mp.json?.point_of_interaction?.transaction_data?.qr_code as string | undefined) ?? null;
+
+        if (nextStatus !== existing.status || (nextPix && nextPix !== existing.pix_copy_paste)) {
+          const serviceClient = createClient(supabaseUrl, serviceKey);
+          await serviceClient
+            .from("payments")
+            .update({ status: nextStatus, pix_copy_paste: nextPix ?? existing.pix_copy_paste })
+            .eq("id", existing.id);
+        }
+      } else {
+        // Don't fail the flow if MP lookup fails; return what we have.
+        console.warn("mercado-pago-pix refresh failed", mp.status, mp.json);
+      }
+
       return json(
         {
           paymentId: existing.id,
-          status: existing.status,
+          status: nextStatus,
           transactionId: existing.transaction_id,
           pixCopyPaste: existing.pix_copy_paste,
         },
