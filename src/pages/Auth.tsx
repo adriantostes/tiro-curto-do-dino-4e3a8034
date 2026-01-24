@@ -59,7 +59,7 @@ export default function Auth() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 py-12">
         <Card className="w-full max-w-md p-6">
-          <p className="text-sm text-muted-foreground">Tiro Curto do Dino</p>
+          <p className="text-sm text-muted-foreground">Liga do Dino</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Acesse sua conta para confirmar e pagar sua vaga (por enquanto, pagamento simulado).

@@ -90,7 +90,7 @@ const Ranking = () => {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="leading-tight">
           <p className="text-xs tracking-wide text-muted-foreground">Dashboard • Ranking Ao Vivo</p>
-          <h1 className="font-display text-2xl font-semibold tracking-widest">{league?.name ?? "TIRO CURTO DO DINO"}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-widest">{league?.name ?? "LIGA DO DINO"}</h1>
         </div>
         <Button variant="secondary" asChild className="rounded-2xl">
           <Link to="/">Voltar</Link>

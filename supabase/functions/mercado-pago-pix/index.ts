@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     }
 
     const amount = 10; // R$ 10,00
-    const externalReference = `tiro-curto-do-dino:${userData.user.id}:${body.participantId}:${body.round}`;
+    const externalReference = `liga-do-dino:${userData.user.id}:${body.participantId}:${body.round}`;
 
     // Create PIX payment in Mercado Pago
     const mpRes = await fetch("https://api.mercadopago.com/v1/payments", {
@@ -94,10 +94,10 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         transaction_amount: amount,
-        description: `Tiro Curto do Dino • Rodada ${body.round} • ${participant.team_name}`,
+        description: `Liga do Dino • Rodada ${body.round} • ${participant.team_name}`,
         payment_method_id: "pix",
         payer: {
-          email: userData.user.email ?? `user-${userData.user.id}@tiro-curto-do-dino.local`,
+          email: userData.user.email ?? `user-${userData.user.id}@liga-do-dino.local`,
         },
         external_reference: externalReference,
       }),

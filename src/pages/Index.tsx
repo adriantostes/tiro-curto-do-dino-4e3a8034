@@ -195,15 +195,14 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden no-scrollbar">
-      <div className="app-wrapper">
-      <header className="flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
             <div className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden />
           </div>
           <div className="leading-tight">
             <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
-            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">TIRO CURTO DO DINO</p>
+            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">LIGA DO DINO</p>
           </div>
         </div>
 
@@ -220,8 +219,8 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="w-full max-w-6xl px-0 pb-12 sm:px-6 sm:pb-16">
-        <section className="liga-card relative overflow-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
+        <section className="relative overflow-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
           {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
           <div
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
@@ -230,8 +229,8 @@ const Index = () => {
 
             <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
             <header>
-              <h1 className="font-display text-[2.4rem] sm:text-5xl md:text-6xl font-bold leading-[0.95] tracking-widest">
-                TIRO CURTO DO DINO
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-[0.95] tracking-widest">
+                LIGA DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
                 Selecione seu time, garanta sua vaga e acompanhe o <span className="text-foreground">Ranking Ao Vivo</span>
@@ -286,7 +285,7 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="liga-dino relative z-20 mx-auto w-full max-w-[180px] object-contain sm:max-w-[220px] md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-20 mx-auto w-[480px] max-w-[88vw] -translate-y-8 scale-[1.14] object-contain sm:w-[560px] sm:-translate-y-12 sm:scale-[1.22] md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
@@ -418,7 +417,6 @@ const Index = () => {
           </Card>
         </section>
       </main>
-      </div>
     </div>
   );
 };
