@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
 import dinoHero from "@/assets/dino-hero-cutout.png";
+import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
 
 const Index = () => {
   const { toast } = useToast();
@@ -22,6 +23,13 @@ const Index = () => {
   const [selected, setSelected] = useState<CartolaTeamSearchItem | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+
+  const { src: dinoSrc } = useChromaKeyImage(dinoHero, {
+    // remove black-ish background when the asset doesn't ship with alpha
+    key: { r: 0, g: 0, b: 0 },
+    threshold: 28,
+    feather: 54,
+  });
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -272,7 +280,7 @@ const Index = () => {
             <div className="relative md:justify-self-end">
               <div className="pointer-events-none absolute -inset-10 rounded-[2.8rem] opacity-60 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.28),transparent_62%)]" />
               <img
-                src={dinoHero}
+                src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
                 className="relative z-10 mx-auto w-[640px] max-w-[98vw] translate-x-6 translate-y-10 md:translate-x-20 md:translate-y-14 drop-shadow-[0_48px_140px_hsl(var(--primary)/0.22)]"
