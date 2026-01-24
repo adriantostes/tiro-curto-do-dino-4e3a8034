@@ -241,13 +241,13 @@ const Index = () => {
                   Digite o nome do seu time
                 </Label>
                 <div className="flex flex-col gap-4 sm:gap-3 sm:flex-row">
-                  <div className="glass w-full rounded-2xl px-4 py-4 min-h-[56px] flex items-center">
+                  <div className="glass w-full rounded-2xl px-4 min-h-[56px] flex items-center">
                     <Input
                       id="team"
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
                       placeholder="Digite o nome do seu time"
-                      className="border-0 bg-transparent px-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="h-14 border-0 bg-transparent px-0 py-0 text-base leading-tight focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </div>
                   <Button
