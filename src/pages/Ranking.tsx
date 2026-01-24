@@ -24,6 +24,11 @@ type LiveEntry = {
   points: number;
 };
 
+function isNotPaidError(err: unknown) {
+  const msg = typeof (err as any)?.message === "string" ? (err as any).message : "";
+  return msg.includes("403") || msg.toLowerCase().includes("pagamento não aprovado");
+}
+
 const Ranking = () => {
   const { user } = useSession();
 
@@ -111,8 +116,8 @@ const Ranking = () => {
                 variant="secondary"
                 className="rounded-none cut-corners skew-wrap"
                 onClick={() => {
-                  participantsQuery.refetch();
-                  scoresQuery.refetch();
+                  void participantsQuery.refetch().catch(() => undefined);
+                  void scoresQuery.refetch().catch(() => undefined);
                 }}
                 disabled={participantsQuery.isFetching || scoresQuery.isFetching}
               >
@@ -124,6 +129,22 @@ const Ranking = () => {
           <Separator />
 
           <div className="p-6">
+            {participantsQuery.isError && isNotPaidError(participantsQuery.error) ? (
+              <Card className="glass-noise scanlines cut-corners rounded-2xl p-5">
+                <p className="font-display text-base font-semibold tracking-[0.12em]">ACESSO BLOQUEADO</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Seu pagamento ainda não foi aprovado nesta rodada. Volte para a Home e gere o PIX para liberar o Ranking.
+                </p>
+                <div className="mt-4">
+                  <Button asChild className="rounded-none cut-corners skew-wrap animate-neon-pulse">
+                    <Link to="/">
+                      <span className="skew-inner">GERAR PIX AGORA</span>
+                    </Link>
+                  </Button>
+                </div>
+              </Card>
+            ) : null}
+
             <div className="grid grid-cols-[70px_1fr_120px] gap-3 text-xs text-muted-foreground tracking-[0.18em]">
               <div>POS</div>
               <div>TIME</div>
