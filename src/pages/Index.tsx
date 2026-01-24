@@ -220,9 +220,10 @@ const Index = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
-        <section className="relative overflow-x-clip overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
+        <section className="relative overflow-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
+          {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
           <div
-            className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
             aria-hidden
           />
 
@@ -253,7 +254,7 @@ const Index = () => {
                   <Button
                     onClick={handleSearch}
                     disabled={searchQuery.isFetching}
-                    className="min-h-[56px] h-auto rounded-2xl px-6 text-base font-semibold tracking-wide"
+                    className="min-h-[56px] h-auto w-full rounded-2xl px-6 text-base font-semibold tracking-wide sm:w-auto"
                   >
                     BUSCAR
                   </Button>
