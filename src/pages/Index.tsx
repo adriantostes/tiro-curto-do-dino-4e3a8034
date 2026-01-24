@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
-import dinoHero from "@/assets/dino-hero-960.png";
+import dinoHero from "@/assets/dino-hero-transparent.png";
 import ligaDoDinoLogo from "@/assets/liga-do-dino-logo-256.png";
 import { QRCodeCanvas } from "qrcode.react";
 
