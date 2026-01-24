@@ -17,8 +17,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { supabase } from "@/integrations/supabase/client";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
 import dinoHero from "@/assets/dino-hero-cutout.png";
 import ligaDoDinoLogo from "@/assets/liga-do-dino-logo.png";
@@ -29,6 +29,7 @@ const Index = () => {
   const { toast } = useToast();
   const { user } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<CartolaTeamSearchItem | null>(null);
   const [participantId, setParticipantId] = useState<string | null>(null);
@@ -36,6 +37,7 @@ const Index = () => {
   const [pixOpen, setPixOpen] = useState(false);
   const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
   const [pixStatus, setPixStatus] = useState<string | null>(null);
+  const [checkingPix, setCheckingPix] = useState(false);
 
   const { src: dinoSrc } = useChromaKeyImage(dinoHero, {
     // remove black-ish background when the asset doesn't ship with alpha
@@ -207,6 +209,49 @@ const Index = () => {
       setJoining(false);
     }
   }
+
+  async function checkPaymentStatus() {
+    if (!user || !currentRound || !participantId) return;
+    setCheckingPix(true);
+    try {
+      const { data, error } = await supabase
+        .from("payments")
+        .select("status")
+        .eq("user_id", user.id)
+        .eq("participant_id", participantId)
+        .eq("round_number", currentRound)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) return;
+
+      const status = (data as any)?.status as string | undefined;
+      if (status && status !== pixStatus) setPixStatus(status);
+
+      if (status === "approved") {
+        toast({ title: "PAGAMENTO CONFIRMADO", description: "Seu time foi liberado no Ranking Ao Vivo." });
+        // garante que o ranking refaça fetch com o novo status
+        await queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      }
+    } finally {
+      setCheckingPix(false);
+    }
+  }
+
+  // Polling leve enquanto o modal está aberto e o status ainda é pending
+  useEffect(() => {
+    if (!pixOpen) return;
+    if (!user || !currentRound || !participantId) return;
+    if (pixStatus === "approved") return;
+
+    const id = window.setInterval(() => {
+      void checkPaymentStatus();
+    }, 3500);
+
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pixOpen, pixStatus, user?.id, currentRound, participantId]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden no-scrollbar">
@@ -443,7 +488,11 @@ const Index = () => {
       </main>
 
       <Dialog open={pixOpen} onOpenChange={setPixOpen}>
-        <DialogContent className="glass-noise glass-glow stadium-glow scanlines cut-corners max-w-md rounded-3xl">
+        <DialogContent
+          className="glass-noise glass-glow stadium-glow scanlines cut-corners max-w-md rounded-3xl"
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="font-display tracking-[0.18em]">PAGUE COM PIX</DialogTitle>
             <DialogDescription>
@@ -451,7 +500,16 @@ const Index = () => {
             </DialogDescription>
           </DialogHeader>
 
-          {pixCopyPaste ? (
+          {pixStatus === "approved" ? (
+            <div className="grid gap-3">
+              <div className="glass-noise scanlines cut-corners rounded-2xl p-4">
+                <p className="font-display text-lg font-extrabold tracking-[0.14em] text-glow">PAGAMENTO CONFIRMADO</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Seu time já está liberado. Entre no Ranking Ao Vivo para ver sua posição.
+                </p>
+              </div>
+            </div>
+          ) : pixCopyPaste ? (
             <div className="grid gap-4">
               <div className="mx-auto rounded-2xl bg-background p-3 ring-1 ring-border">
                 <QRCodeCanvas value={pixCopyPaste} size={220} includeMargin />
@@ -485,6 +543,16 @@ const Index = () => {
             >
                 <span className="skew-inner">COPIAR CÓDIGO</span>
             </Button>
+
+            <Button
+              variant="secondary"
+              className="rounded-none cut-corners skew-wrap"
+              onClick={() => void checkPaymentStatus()}
+              disabled={checkingPix || pixStatus === "approved"}
+            >
+              <span className="skew-inner">JÁ PAGUEI</span>
+            </Button>
+
             <Button
                 className="rounded-none cut-corners skew-wrap animate-neon-pulse"
               onClick={() => {
