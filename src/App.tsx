@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Ranking from "./pages/Ranking";
+import Auth from "./pages/Auth";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -17,7 +19,15 @@ const App = () => (
         <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/ranking" element={<Ranking />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/ranking"
+            element={
+              <ProtectedRoute>
+                <Ranking />
+              </ProtectedRoute>
+            }
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
