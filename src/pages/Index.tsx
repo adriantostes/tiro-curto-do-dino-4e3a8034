@@ -194,83 +194,83 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+    <div className="min-h-screen bg-background overflow-x-hidden no-scrollbar">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
+          <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25">
             <div className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden />
           </div>
           <div className="leading-tight">
-            <p className="text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
-            <p className="font-display text-lg font-semibold tracking-widest">LIGA DO DINO</p>
+            <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
+            <p className="font-display text-base sm:text-lg font-semibold tracking-widest">LIGA DO DINO</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {user ? (
-            <Button asChild>
+            <Button asChild size="sm" className="text-xs sm:text-sm">
               <Link to="/ranking">RANKING AO VIVO</Link>
             </Button>
           ) : (
-            <Button asChild>
+            <Button asChild size="sm" className="text-xs sm:text-sm">
               <Link to="/auth">ENTRAR</Link>
             </Button>
           )}
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <section className="relative overflow-x-clip overflow-y-visible rounded-3xl p-6 md:p-10 glass glass-glow animate-enter">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
+        <section className="relative overflow-x-clip overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
           <div
             className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
             aria-hidden
           />
 
-            <div className="relative grid gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
+            <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center">
             <header>
-              <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-widest md:text-6xl">
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-bold leading-[0.95] tracking-widest">
                 LIGA DO DINO
               </h1>
-              <p className="mt-4 max-w-xl text-base text-muted-foreground">
+              <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
                 Selecione seu time, garanta sua vaga e acompanhe o <span className="text-foreground">Ranking Ao Vivo</span>
                 em tempo real.
               </p>
 
-              <div className="mt-7 grid gap-3">
-                <Label htmlFor="team" className="text-sm">
+              <div className="mt-6 sm:mt-7 grid gap-4 sm:gap-3">
+                <Label htmlFor="team" className="text-sm sm:text-base">
                   Digite o nome do seu time
                 </Label>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="glass w-full rounded-2xl px-4 py-3">
+                <div className="flex flex-col gap-4 sm:gap-3 sm:flex-row">
+                  <div className="glass w-full rounded-2xl px-4 py-4 min-h-[56px] flex items-center">
                     <Input
                       id="team"
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
                       placeholder="Digite o nome do seu time"
-                      className="border-0 bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="border-0 bg-transparent px-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </div>
                   <Button
                     onClick={handleSearch}
                     disabled={searchQuery.isFetching}
-                    className="h-12 rounded-2xl px-6 font-semibold tracking-wide"
+                    className="min-h-[56px] h-auto rounded-2xl px-6 text-base font-semibold tracking-wide"
                   >
                     BUSCAR
                   </Button>
                 </div>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Rodada atual: <span className="text-foreground">{currentRound ?? "..."}</span>
                 </p>
               </div>
 
               {!user ? (
-                <div className="mt-6 glass rounded-2xl p-5">
-                  <p className="text-sm text-muted-foreground">
+                <div className="mt-5 sm:mt-6 glass rounded-2xl p-4 sm:p-5">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Para testar o fluxo completo (e liberar o ranking), entre com sua conta.
                   </p>
-                  <div className="mt-3">
-                    <Button asChild className="rounded-2xl">
+                  <div className="mt-3 sm:mt-4">
+                    <Button asChild className="rounded-2xl w-full sm:w-auto min-h-[50px]">
                       <Link to="/auth">ENTRAR / CRIAR CONTA</Link>
                     </Button>
                   </div>
@@ -284,7 +284,7 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative z-20 mx-auto w-[520px] max-w-[92vw] -translate-y-10 scale-[1.18] sm:w-[560px] sm:-translate-y-12 md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-20 mx-auto w-[480px] max-w-[88vw] -translate-y-8 scale-[1.14] object-contain sm:w-[560px] sm:-translate-y-12 sm:scale-[1.22] md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
