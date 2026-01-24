@@ -213,19 +213,15 @@ const Index = () => {
     if (!user || !currentRound || !participantId) return;
     setCheckingPix(true);
     try {
-      const { data, error } = await supabase
-        .from("payments")
-        .select("status")
-        .eq("user_id", user.id)
-        .eq("participant_id", participantId)
-        .eq("round_number", currentRound)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
+      // Ask backend to refresh payment status from provider and return the latest state.
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix", {
+        body: { participantId, round: currentRound },
+      });
       if (error) return;
 
       const status = (data as any)?.status as string | undefined;
+      const pix = (data as any)?.pixCopyPaste as string | undefined;
+      if (pix && pix !== pixCopyPaste) setPixCopyPaste(pix);
       if (status && status !== pixStatus) setPixStatus(status);
 
       if (status === "approved") {
