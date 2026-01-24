@@ -90,31 +90,33 @@ const Ranking = () => {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="leading-tight">
           <p className="text-xs tracking-wide text-muted-foreground">Dashboard • Ranking Ao Vivo</p>
-          <h1 className="font-display text-2xl font-semibold tracking-widest">{league?.name ?? "LIGA DO DINO"}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-[0.22em]">{league?.name ?? "LIGA DO DINO"}</h1>
         </div>
-        <Button variant="secondary" asChild className="rounded-2xl">
-          <Link to="/">Voltar</Link>
+        <Button variant="secondary" asChild className="rounded-none cut-corners skew-wrap">
+          <Link to="/" className="skew-inner">
+            VOLTAR
+          </Link>
         </Button>
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-6 pb-16">
-        <Card className="glass glass-glow overflow-hidden rounded-3xl animate-enter">
+        <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners overflow-hidden rounded-3xl animate-enter">
           <div className="flex flex-col gap-2 p-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="font-display text-xl font-semibold tracking-wide">RANKING AO VIVO</h2>
+              <h2 className="font-display text-xl font-semibold tracking-[0.18em]">RANKING AO VIVO</h2>
               <p className="text-sm text-muted-foreground">Rodada: {currentRound ?? "..."} • Auto-refresh 60s.</p>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
-                className="rounded-2xl"
+                className="rounded-none cut-corners skew-wrap"
                 onClick={() => {
                   participantsQuery.refetch();
                   scoresQuery.refetch();
                 }}
                 disabled={participantsQuery.isFetching || scoresQuery.isFetching}
               >
-                Atualizar agora
+                <span className="skew-inner">ATUALIZAR AGORA</span>
               </Button>
             </div>
           </div>
@@ -122,7 +124,7 @@ const Ranking = () => {
           <Separator />
 
           <div className="p-6">
-            <div className="grid grid-cols-[70px_1fr_120px] gap-3 text-xs text-muted-foreground">
+            <div className="grid grid-cols-[70px_1fr_120px] gap-3 text-xs text-muted-foreground tracking-[0.18em]">
               <div>POS</div>
               <div>TIME</div>
               <div className="text-right">PONTOS</div>
@@ -130,11 +132,11 @@ const Ranking = () => {
 
             <div className="mt-4 space-y-3">
               {scoresQuery.isLoading ? (
-                <Card className="glass rounded-2xl p-4">
+                <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm text-muted-foreground">Carregando ranking…</p>
                 </Card>
               ) : (scoresQuery.data?.length ?? 0) === 0 ? (
-                <Card className="glass rounded-2xl p-4">
+                <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm font-medium">Sem participantes pagos nesta rodada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Volte para a Home, selecione seu time e clique em “QUERO PARTICIPAR”.
@@ -145,7 +147,7 @@ const Ranking = () => {
               {(scoresQuery.data ?? []).map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
-                  className={`glass grid grid-cols-[70px_1fr_120px] items-center gap-3 rounded-2xl px-4 py-3 transition ${podiumClass(
+                  className={`glass-noise scanlines cut-corners grid grid-cols-[70px_1fr_120px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] ${podiumClass(
                     idx
                   )}`}
                 >
@@ -188,7 +190,7 @@ const Ranking = () => {
                     </div>
                   </div>
 
-                  <div className="text-right text-base font-semibold tabular-nums">
+                  <div className="text-right text-lg font-semibold tabular-nums text-glow">
                     <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} />
                   </div>
                 </div>

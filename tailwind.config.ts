@@ -108,6 +108,35 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(100%)" },
         },
+
+        "neon-pulse": {
+          "0%": {
+            boxShadow:
+              "0 0 0 1px hsl(var(--primary) / 0.20), 0 0 0 0px hsl(var(--primary) / 0.0), 0 18px 42px -18px hsl(var(--primary) / 0.55)",
+          },
+          "55%": {
+            boxShadow:
+              "0 0 0 1px hsl(var(--primary) / 0.35), 0 0 0 10px hsl(var(--primary) / 0.08), 0 24px 64px -22px hsl(var(--primary) / 0.70)",
+          },
+          "100%": {
+            boxShadow:
+              "0 0 0 1px hsl(var(--primary) / 0.22), 0 0 0 0px hsl(var(--primary) / 0.0), 0 18px 42px -18px hsl(var(--primary) / 0.55)",
+          },
+        },
+
+        "hud-flicker": {
+          "0%": { opacity: "0.92" },
+          "8%": { opacity: "1" },
+          "10%": { opacity: "0.78" },
+          "12%": { opacity: "1" },
+          "100%": { opacity: "0.92" },
+        },
+
+        float: {
+          "0%": { transform: "translate3d(0,0,0)" },
+          "50%": { transform: "translate3d(0,-10px,0)" },
+          "100%": { transform: "translate3d(0,0,0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -120,6 +149,10 @@ export default {
         "slide-out-right": "slide-out-right 0.3s ease-out",
         enter: "fade-in 0.35s ease-out, scale-in 0.2s ease-out",
         exit: "fade-out 0.35s ease-out, scale-out 0.2s ease-out",
+
+        "neon-pulse": "neon-pulse 1.35s ease-in-out infinite",
+        "hud-flicker": "hud-flicker 7s ease-in-out infinite",
+        float: "float 5.5s ease-in-out infinite",
       },
     },
   },
