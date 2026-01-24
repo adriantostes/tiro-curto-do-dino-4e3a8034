@@ -27,8 +27,9 @@ const Index = () => {
   const { src: dinoSrc } = useChromaKeyImage(dinoHero, {
     // remove black-ish background when the asset doesn't ship with alpha
     key: { r: 0, g: 0, b: 0 },
-    threshold: 28,
-    feather: 54,
+    // lower values = less aggressive keying (prevents the dino/shadows from becoming transparent)
+    threshold: 12,
+    feather: 22,
   });
 
   const { data: market } = useQuery({
