@@ -20,9 +20,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
-import dinoHero from "@/assets/dino-hero-cutout.png";
-import ligaDoDinoLogo from "@/assets/liga-do-dino-logo.png";
-import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
+import dinoHero from "@/assets/dino-hero-960.png";
+import ligaDoDinoLogo from "@/assets/liga-do-dino-logo-256.png";
 import { QRCodeCanvas } from "qrcode.react";
 
 const Index = () => {
@@ -38,21 +37,6 @@ const Index = () => {
   const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
   const [pixStatus, setPixStatus] = useState<string | null>(null);
   const [checkingPix, setCheckingPix] = useState(false);
-
-  const { src: dinoSrc } = useChromaKeyImage(dinoHero, {
-    // remove black-ish background when the asset doesn't ship with alpha
-    key: { r: 0, g: 0, b: 0 },
-    // lower values = less aggressive keying (prevents the dino/shadows from becoming transparent)
-    threshold: 12,
-    feather: 22,
-  });
-
-  const { src: logoSrc } = useChromaKeyImage(ligaDoDinoLogo, {
-    // remove green background from the uploaded logo
-    key: { r: 0, g: 255, b: 136 },
-    threshold: 46,
-    feather: 26,
-  });
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -254,10 +238,13 @@ const Index = () => {
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
             <img
-              src={logoSrc}
+              src={ligaDoDinoLogo}
               alt="Logo Liga do Dino"
               className="h-[44px] w-[44px] object-contain"
-              loading="lazy"
+              width={44}
+              height={44}
+              decoding="async"
+              loading="eager"
             />
           </div>
           <div className="leading-tight">
@@ -342,9 +329,13 @@ const Index = () => {
             <div className="relative md:justify-self-end">
               <div className="pointer-events-none absolute -inset-10 rounded-[2.8rem] opacity-60 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.28),transparent_62%)]" />
               <img
-                src={dinoSrc}
+                src={dinoHero}
                 alt="Mascote dinossauro 3D do Tiro Curto do Dino"
-                loading="lazy"
+                width={1344}
+                height={768}
+                decoding="async"
+                fetchPriority="high"
+                loading="eager"
                 className="relative z-20 mx-auto w-[380px] max-w-full object-contain sm:w-[520px] sm:-translate-y-10 md:w-[760px] md:max-w-[52vw] md:translate-x-20 md:-translate-y-16 md:scale-[1.18] animate-float drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
