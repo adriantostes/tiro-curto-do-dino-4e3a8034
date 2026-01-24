@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cartolaMarketStatus, cartolaSearchTeams, type CartolaTeamSearchItem } from "@/lib/cartola";
-import dinoHero from "@/assets/dino-hero-cutout.png";
+import dinoHero from "@/assets/dino-hero-tiro-curto.png";
 import { useChromaKeyImage } from "@/hooks/useChromaKeyImage";
 
 const Index = () => {
@@ -220,7 +220,7 @@ const Index = () => {
       </header>
 
       <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
-        <section className="relative overflow-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
+        <section className="relative overflow-x-hidden overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass glass-glow animate-enter">
           {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
           <div
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
@@ -237,24 +237,24 @@ const Index = () => {
                 em tempo real.
               </p>
 
-              <div className="mt-6 sm:mt-7 grid gap-4 sm:gap-3">
+              <div className="mt-6 sm:mt-7 grid gap-4 sm:gap-3 min-w-0">
                 <Label htmlFor="team" className="text-sm sm:text-base">
                   Digite o nome do seu time
                 </Label>
-                <div className="flex flex-col gap-4 sm:gap-3 sm:flex-row">
-                  <div className="glass w-full rounded-2xl px-4 min-h-[56px] flex items-center">
+                <div className="flex w-full min-w-0 flex-col gap-4 sm:gap-3 sm:flex-row">
+                  <div className="glass w-full min-w-0 overflow-hidden rounded-2xl px-4 min-h-[56px] flex items-center">
                     <Input
                       id="team"
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
                       placeholder="Digite o nome do seu time"
-                      className="h-14 border-0 bg-transparent px-0 py-0 text-base leading-tight focus-visible:ring-0 focus-visible:ring-offset-0"
+                      className="h-14 w-full border-0 bg-transparent px-0 py-0 text-base leading-tight focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </div>
                   <Button
                     onClick={handleSearch}
                     disabled={searchQuery.isFetching}
-                    className="min-h-[56px] h-auto w-full rounded-2xl px-6 text-base font-semibold tracking-wide sm:w-auto"
+                    className="min-h-[56px] h-auto w-full shrink-0 rounded-2xl px-6 text-base font-semibold tracking-wide focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-auto"
                   >
                     BUSCAR
                   </Button>
@@ -285,7 +285,7 @@ const Index = () => {
                 src={dinoSrc}
                 alt="Mascote dinossauro 3D da Liga do Dino"
                 loading="lazy"
-                className="relative z-20 mx-auto w-[480px] max-w-[88vw] -translate-y-8 scale-[1.14] object-contain sm:w-[560px] sm:-translate-y-12 sm:scale-[1.22] md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.28] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
+                className="relative z-20 mx-auto w-[340px] max-w-full translate-y-0 object-contain sm:w-[440px] sm:-translate-y-6 md:w-[640px] md:max-w-[46vw] md:translate-x-14 md:-translate-y-10 md:scale-[1.12] drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
               />
             </div>
           </div>
