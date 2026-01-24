@@ -261,7 +261,7 @@ const Index = () => {
             />
           </div>
           <div className="leading-tight">
-            <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Daily Fantasy • Cartola FC</p>
+            <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Cartola FC</p>
             <p className="font-display text-base sm:text-lg font-semibold tracking-[0.24em]">TIRO CURTO DO DINO</p>
           </div>
         </div>
