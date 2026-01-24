@@ -33,9 +33,17 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    // In the runtime, the anon key is exposed as SUPABASE_ANON_KEY.
+    const anonKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      Deno.env.get("SUPABASE_ANON_PUBLIC_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const mpAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN")!;
+
+    if (!supabaseUrl) throw new Error("Missing SUPABASE_URL");
+    if (!anonKey) throw new Error("Missing SUPABASE_ANON_KEY");
+    if (!serviceKey) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const userClient = createClient(supabaseUrl, anonKey, {
