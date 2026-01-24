@@ -6,7 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useSession } from "@/hooks/useSession";
-import { supabase } from "@/integrations/supabase/client";
 import { cartolaMarketStatus, cartolaTeamScore } from "@/lib/cartola";
 import { extractCartolaTeamPoints } from "@/lib/cartolaPoints";
 import { fetchPaidParticipants, type LeaderboardParticipant } from "@/lib/leaderboard";
@@ -35,7 +34,7 @@ const Ranking = () => {
     queryKey: ["cartola", "market_status"],
     queryFn: cartolaMarketStatus,
     staleTime: 60_000,
-    enabled: !!user,
+    enabled: true,
   });
 
   const currentRound = useMemo(() => {
@@ -43,23 +42,17 @@ const Ranking = () => {
     return Number.isFinite(r) && r > 0 ? r : null;
   }, [market]);
 
-  const { data: league } = useQuery({
-    queryKey: ["leagues", "active"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("leagues").select("id,name").limit(1).maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  // A liga é opcional aqui. Para permitir acesso público, evitamos depender da leitura do banco
+  // (que pode exigir login). Se você quiser filtrar por liga no futuro, podemos reintroduzir isso.
+  const leagueId: string | null = null;
 
   const participantsQuery = useQuery({
-    queryKey: ["leaderboard", "participants", currentRound, league?.id],
+    queryKey: ["leaderboard", "participants", currentRound, leagueId],
     queryFn: async () => {
       if (!currentRound) return { paid: false, participants: [] };
-      return await fetchPaidParticipants({ round: currentRound, leagueId: league?.id ?? null });
+      return await fetchPaidParticipants({ round: currentRound, leagueId });
     },
-    enabled: !!user && !!currentRound,
+    enabled: !!currentRound,
     staleTime: 10_000,
     refetchInterval: 60_000,
   });
@@ -72,7 +65,7 @@ const Ranking = () => {
   }, [participantsQuery.data]);
 
   const scoresQuery = useQuery({
-    queryKey: ["leaderboard", "scores", currentRound, league?.id, paidInfo.participants.map((p) => p.id).join(",")],
+    queryKey: ["leaderboard", "scores", currentRound, leagueId, paidInfo.participants.map((p) => p.id).join(",")],
     queryFn: async () => {
       const participants = paidInfo.participants;
       if (!currentRound || participants.length === 0) return [] as LiveEntry[];
@@ -91,10 +84,16 @@ const Ranking = () => {
 
       return results.sort((a, b) => b.points - a.points);
     },
-    enabled: !!user && !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
+    enabled: !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
     staleTime: 10_000,
     refetchInterval: 60_000,
   });
+
+  const publicEntries = useMemo(() => {
+    // Quando não está pago (ou não está logado), mostramos só a lista, sem pontuação.
+    const sorted = [...paidInfo.participants].sort((a, b) => a.team_name.localeCompare(b.team_name));
+    return sorted;
+  }, [paidInfo.participants]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -137,9 +136,10 @@ const Ranking = () => {
           <div className="p-6">
             {participantsQuery.isSuccess && !paidInfo.paid ? (
               <Card className="glass-noise scanlines cut-corners rounded-2xl p-5">
-                <p className="font-display text-base font-semibold tracking-[0.12em]">ACESSO BLOQUEADO</p>
+                <p className="font-display text-base font-semibold tracking-[0.12em]">PONTUAÇÃO BLOQUEADA</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Seu pagamento ainda não foi aprovado nesta rodada. Volte para a Home e gere o PIX para liberar o Ranking.
+                  A lista de participantes é pública, mas a pontuação ao vivo só aparece para quem pagou a rodada.
+                  {user ? "" : " Entre/crie uma conta para participar."}
                 </p>
                 <div className="mt-4">
                   <Button asChild className="rounded-none cut-corners skew-wrap animate-neon-pulse">
@@ -158,20 +158,25 @@ const Ranking = () => {
             </div>
 
             <div className="mt-4 space-y-3">
-              {scoresQuery.isLoading ? (
+              {paidInfo.paid && scoresQuery.isLoading ? (
                 <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm text-muted-foreground">Carregando ranking…</p>
                 </Card>
-              ) : (scoresQuery.data?.length ?? 0) === 0 ? (
+              ) : paidInfo.paid && (scoresQuery.data?.length ?? 0) === 0 ? (
                 <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm font-medium">Sem participantes pagos nesta rodada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Volte para a Home, selecione seu time e clique em “QUERO PARTICIPAR”.
                   </p>
                 </Card>
+              ) : !paidInfo.paid && (publicEntries.length ?? 0) === 0 ? (
+                <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
+                  <p className="text-sm font-medium">Ainda não há participantes nesta rodada</p>
+                </Card>
               ) : null}
 
-              {(scoresQuery.data ?? []).map((entry, idx) => (
+              {(paidInfo.paid ? (scoresQuery.data ?? []) : publicEntries.map((p) => ({ participant: p, points: 0 })))
+                .map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
                   className={`glass-noise scanlines cut-corners grid grid-cols-[70px_1fr_120px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] ${podiumClass(
@@ -218,7 +223,7 @@ const Ranking = () => {
                   </div>
 
                   <div className="text-right text-lg font-semibold tabular-nums text-glow">
-                    <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} />
+                    {paidInfo.paid ? <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} /> : <span>—</span>}
                   </div>
                 </div>
               ))}

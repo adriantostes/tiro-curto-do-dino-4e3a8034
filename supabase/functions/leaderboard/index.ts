@@ -40,33 +40,33 @@ Deno.serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization") ?? "";
 
-    // User-scoped client (to identify caller)
+    // User-scoped client (optional): used only to check if caller is paid.
+    // Public users are allowed to see the participant list, but not points.
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) {
-      return json({ error: "Não autenticado" }, { status: 401 });
-    }
 
     const { round, leagueId } = (await req.json()) as Body;
     if (!round || round < 1) return json({ error: "Rodada inválida" }, { status: 400 });
 
-    // Check if caller is paid for this round (reuses existing DB function)
-    const { data: isPaid, error: paidErr } = await userClient.rpc("is_paid_user_for_round", {
-      _user_id: userData.user.id,
-      _round: round,
-    });
+    let isPaid = false;
+    if (!userErr && userData?.user?.id) {
+      // Check if caller is paid for this round (reuses existing DB function)
+      const { data: paid, error: paidErr } = await userClient.rpc("is_paid_user_for_round", {
+        _user_id: userData.user.id,
+        _round: round,
+      });
 
-    if (paidErr) {
-      console.error("leaderboard paid check error", paidErr);
-      return json({ error: "Falha ao validar pagamento" }, { status: 500 });
+      if (paidErr) {
+        console.error("leaderboard paid check error", paidErr);
+        // If payment check fails, degrade gracefully: still show participant list.
+        isPaid = false;
+      } else {
+        isPaid = Boolean(paid);
+      }
     }
-    // IMPORTANT: Don't return 403 here.
-    // Some clients treat non-2xx from functions as a hard runtime error (blank screen).
-    // We return 200 with a clear flag so the UI can render a paywall state.
-    if (!isPaid) return json({ paid: false, participants: [] }, { status: 200 });
 
     // Service client (to read all approved participants)
     const serviceClient = createClient(supabaseUrl, serviceKey);
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
     }
 
     const ids = Array.from(new Set((payments ?? []).map((p) => p.participant_id).filter(Boolean)));
-    if (ids.length === 0) return json({ paid: true, participants: [] }, { status: 200 });
+    if (ids.length === 0) return json({ paid: isPaid, participants: [] }, { status: 200 });
 
     let query = serviceClient
       .from("participants")
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       return json({ error: "Falha ao carregar participantes" }, { status: 500 });
     }
 
-    return json({ paid: true, participants: participants ?? [] }, { status: 200 });
+    return json({ paid: isPaid, participants: participants ?? [] }, { status: 200 });
   } catch (e) {
     console.error("leaderboard exception", e);
     return json({ error: "Erro interno" }, { status: 500 });
