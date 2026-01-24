@@ -14,11 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      leagues: {
+        Row: {
+          created_at: string
+          current_round: number | null
+          id: string
+          name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_round?: number | null
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_round?: number | null
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      participants: {
+        Row: {
+          cartola_team_id: number
+          created_at: string
+          id: string
+          league_id: string | null
+          team_name: string
+          team_shield_url: string | null
+          team_slug: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cartola_team_id: number
+          created_at?: string
+          id?: string
+          league_id?: string | null
+          team_name: string
+          team_shield_url?: string | null
+          team_slug?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cartola_team_id?: number
+          created_at?: string
+          id?: string
+          league_id?: string | null
+          team_name?: string
+          team_shield_url?: string | null
+          team_slug?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "participants_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number
           created_at: string
           id: string
+          participant_id: string | null
           pix_copy_paste: string | null
           pix_qr_code: string | null
           round_number: number
@@ -32,6 +104,7 @@ export type Database = {
           amount_cents?: number
           created_at?: string
           id?: string
+          participant_id?: string | null
           pix_copy_paste?: string | null
           pix_qr_code?: string | null
           round_number: number
@@ -45,6 +118,7 @@ export type Database = {
           amount_cents?: number
           created_at?: string
           id?: string
+          participant_id?: string | null
           pix_copy_paste?: string | null
           pix_qr_code?: string | null
           round_number?: number
@@ -55,6 +129,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_team_id_fkey"
             columns: ["team_id"]
