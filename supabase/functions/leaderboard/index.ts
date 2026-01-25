@@ -71,6 +71,9 @@ Deno.serve(async (req) => {
     // Service client (to read all approved participants)
     const serviceClient = createClient(supabaseUrl, serviceKey);
 
+    // We support TWO schemas:
+    // 1) Legacy: payments.participant_id (single-team payment)
+    // 2) Bulk: payment_items rows linked to an approved payment
     const { data: payments, error: payErr } = await serviceClient
       .from("payments")
       .select("participant_id")
@@ -78,12 +81,26 @@ Deno.serve(async (req) => {
       .eq("round_number", round)
       .not("participant_id", "is", null);
 
+    const { data: items, error: itemsErr } = await serviceClient
+      .from("payment_items")
+      .select("participant_id, payments!inner(status, round_number)")
+      .eq("round_number", round)
+      .eq("payments.status", "approved")
+      .eq("payments.round_number", round);
+
     if (payErr) {
       console.error("leaderboard payments error", payErr);
       return json({ error: "Falha ao carregar participantes pagos" }, { status: 500 });
     }
 
-    const ids = Array.from(new Set((payments ?? []).map((p) => p.participant_id).filter(Boolean)));
+    if (itemsErr) {
+      console.error("leaderboard payment_items error", itemsErr);
+      return json({ error: "Falha ao carregar itens de pagamento" }, { status: 500 });
+    }
+
+    const legacyIds = (payments ?? []).map((p: any) => p.participant_id).filter(Boolean);
+    const bulkIds = (items ?? []).map((i: any) => i.participant_id).filter(Boolean);
+    const ids = Array.from(new Set([...legacyIds, ...bulkIds]));
     if (ids.length === 0) return json({ paid: isPaid, participants: [] }, { status: 200 });
 
     let query = serviceClient
