@@ -46,22 +46,22 @@
    const statusIcon = (status: string) => {
      switch (status) {
        case "approved":
-         return <CheckCircle className="h-4 w-4 text-green-500" />;
+         return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />;
        case "pending":
-         return <Clock className="h-4 w-4 text-yellow-500" />;
+         return <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />;
        default:
-         return <XCircle className="h-4 w-4 text-red-500" />;
+         return <XCircle className="h-4 w-4 text-destructive" />;
      }
    };
  
    const statusColor = (status: string) => {
      switch (status) {
        case "approved":
-         return "bg-green-500/10 text-green-500 border-green-500/20";
+         return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800";
        case "pending":
-         return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+         return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800";
        default:
-         return "bg-red-500/10 text-red-500 border-red-500/20";
+         return "bg-destructive/10 text-destructive border-destructive/20";
      }
    };
  
