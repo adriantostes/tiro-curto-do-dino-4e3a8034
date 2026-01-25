@@ -378,8 +378,8 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16">
-        <section className="relative overflow-x-hidden overflow-y-visible rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass-noise glass-glow stadium-glow scanlines cut-corners animate-enter">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 overflow-x-hidden">
+        <section className="relative rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass-noise glass-glow stadium-glow scanlines cut-corners animate-enter">
           {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
           <div
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
