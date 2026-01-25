@@ -43,6 +43,8 @@ const Index = () => {
   const [pixStatus, setPixStatus] = useState<string | null>(null);
   const [checkingPix, setCheckingPix] = useState(false);
   const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
+  const [reconciling, setReconciling] = useState(false);
+  const [lastPendingPaymentId, setLastPendingPaymentId] = useState<string | null>(null);
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -251,11 +253,80 @@ const Index = () => {
         toast({ title: "PAGAMENTO CONFIRMADO", description: "Seu time foi liberado no Ranking Ao Vivo." });
         // garante que o ranking refaça fetch com o novo status
         await queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+        // Se quiser ir direto, descomente:
+        // navigate("/ranking");
       }
     } finally {
       setCheckingPix(false);
     }
   }
+
+  async function reconcilePendingPayment() {
+    if (!user || !currentRound) return;
+    setReconciling(true);
+    try {
+      // Busca o pagamento mais recente que ainda não está aprovado (RLS já limita ao usuário)
+      const { data: pending, error: pendingErr } = await supabase
+        .from("payments")
+        .select("id,status")
+        .eq("user_id", user.id)
+        .eq("round_number", currentRound)
+        .neq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pendingErr) {
+        toast({ title: "Falha ao checar pagamento", description: pendingErr.message });
+        return;
+      }
+
+      if (!pending?.id) {
+        setLastPendingPaymentId(null);
+        return;
+      }
+
+      setLastPendingPaymentId(String(pending.id));
+
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix-bulk", {
+        body: { paymentId: String(pending.id), round: currentRound },
+      });
+
+      if (error) {
+        toast({ title: "Falha ao verificar no provedor", description: error.message });
+        return;
+      }
+
+      const nextStatus = String((data as any)?.status ?? pending.status ?? "pending");
+      const nextPix = ((data as any)?.pixCopyPaste as string | undefined) ?? null;
+      setActivePaymentId(String(pending.id));
+      setPixStatus(nextStatus);
+      if (nextPix) setPixCopyPaste(nextPix);
+
+      if (nextStatus === "approved") {
+        toast({ title: "PAGAMENTO CONFIRMADO", description: "Acesso liberado para a rodada." });
+        await queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+        navigate("/ranking");
+      } else {
+        // Reabre o modal com o pix (caso o usuário tenha fechado e precise pagar/copiar de novo)
+        setPixOpen(true);
+        toast({ title: "Pagamento ainda pendente", description: "Se você acabou de pagar, pode levar alguns segundos." });
+      }
+    } finally {
+      setReconciling(false);
+    }
+  }
+
+  // Auto-reconcilia 1x ao abrir a Home logado (evita depender só do webhook/modal)
+  useEffect(() => {
+    if (!user || !currentRound) return;
+    // roda apenas uma vez por user+rodada
+    const key = `ldd:reconcile:${user.id}:${currentRound}`;
+    if (window.sessionStorage.getItem(key)) return;
+    window.sessionStorage.setItem(key, "1");
+    void reconcilePendingPayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, currentRound]);
 
   // Polling leve enquanto o modal está aberto e o status ainda é pending
   useEffect(() => {
@@ -501,6 +572,27 @@ const Index = () => {
                       <span className="skew-inner">FINALIZAR E PAGAR</span>
                     </Button>
                   </div>
+
+                  {user ? (
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="rounded-none cut-corners skew-wrap"
+                        onClick={() => void reconcilePendingPayment()}
+                        disabled={reconciling}
+                      >
+                        <span className="skew-inner">JÁ PAGUEI • VERIFICAR</span>
+                      </Button>
+                      {lastPendingPaymentId ? (
+                        <p className="text-xs text-muted-foreground">
+                          Pagamento pendente detectado: <span className="text-foreground">{lastPendingPaymentId}</span>
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Nenhum pagamento pendente encontrado nesta rodada.</p>
+                      )}
+                    </div>
+                  ) : null}
 
                   <Separator className="my-4" />
 
