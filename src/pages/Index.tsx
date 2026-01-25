@@ -385,12 +385,16 @@ const Index = () => {
 
         <section className="mt-8 grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
           <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-6 md:p-8">
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="font-display text-2xl font-semibold tracking-[0.14em]">Selecione seu time</h2>
                 <p className="mt-1 text-sm text-muted-foreground">Encontre seu time e garanta sua vaga na rodada.</p>
               </div>
-              <Button variant="secondary" asChild className="rounded-none cut-corners skew-wrap">
+              <Button
+                variant="secondary"
+                asChild
+                className="w-full sm:w-auto rounded-none cut-corners skew-wrap text-xs sm:text-sm"
+              >
                 <Link to="/ranking">
                   <span className="skew-inner">VER RANKING</span>
                 </Link>
