@@ -161,9 +161,10 @@ const Ranking = () => {
       return batches.sort((a, b) => b.points - a.points);
     },
     enabled: !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
-    staleTime: 15_000, // Cache mais agressivo (15s)
+    staleTime: 30_000, // Cache ainda mais agressivo (30s) - reduz refetches
     refetchInterval: 45_000, // Polling mais leve (45s)
-    gcTime: 300_000, // Mantém dados em cache por 5min
+    gcTime: 600_000, // Mantém dados em cache por 10min
+    placeholderData: (previousData) => previousData, // Mostra dados anteriores enquanto atualiza
   });
 
   const publicEntries = useMemo(() => {
@@ -171,6 +172,22 @@ const Ranking = () => {
     const sorted = [...paidInfo.participants].sort((a, b) => a.team_name.localeCompare(b.team_name));
     return sorted;
   }, [paidInfo.participants]);
+
+  // Mescla participantes com pontuações quando disponíveis
+  const displayEntries = useMemo(() => {
+    if (!paidInfo.paid) {
+      // Modo público: lista alfabética sem pontos
+      return publicEntries.map((p) => ({ participant: p, points: 0 }));
+    }
+
+    if (scoresQuery.isLoading && !scoresQuery.data) {
+      // Primeira carga: mostra participantes com pontos em 0 (skeleton)
+      return paidInfo.participants.map((p) => ({ participant: p, points: 0 }));
+    }
+
+    // Dados carregados: mostra pontuação real
+    return scoresQuery.data ?? [];
+  }, [paidInfo.paid, paidInfo.participants, publicEntries, scoresQuery.data, scoresQuery.isLoading]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -211,7 +228,14 @@ const Ranking = () => {
           <Separator />
 
           <div className="p-6">
-            {participantsQuery.isSuccess && !paidInfo.paid ? (
+            {participantsQuery.isLoading ? (
+              <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <p className="text-sm text-muted-foreground">Carregando participantes...</p>
+                </div>
+              </Card>
+            ) : participantsQuery.isSuccess && !paidInfo.paid ? (
               <Card className="glass-noise scanlines cut-corners rounded-2xl p-5">
                 <p className="font-display text-base font-semibold tracking-[0.12em]">PONTUAÇÃO BLOQUEADA</p>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -254,27 +278,22 @@ const Ranking = () => {
             </div>
 
             <div className="mt-4 space-y-3">
-              {paidInfo.paid && scoresQuery.isLoading ? (
-                <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
-                  <p className="text-sm text-muted-foreground">Carregando ranking…</p>
-                </Card>
-              ) : paidInfo.paid && (scoresQuery.data?.length ?? 0) === 0 ? (
+              {paidInfo.paid && (displayEntries.length ?? 0) === 0 ? (
                 <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm font-medium">Sem participantes pagos nesta rodada</p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Volte para a Home, selecione seu time e clique em “QUERO PARTICIPAR”.
                   </p>
                 </Card>
-              ) : !paidInfo.paid && (publicEntries.length ?? 0) === 0 ? (
+              ) : !paidInfo.paid && (displayEntries.length ?? 0) === 0 ? (
                 <Card className="glass-noise scanlines cut-corners rounded-2xl p-4">
                   <p className="text-sm font-medium">Ainda não há participantes nesta rodada</p>
                 </Card>
               ) : null}
 
-              {(paidInfo.paid
-                ? (scoresQuery.data ?? [])
-                : publicEntries.map((p) => ({ participant: p, points: 0 })))
-                .map((entry, idx) => (
+              {displayEntries.map((entry, idx) => {
+                const isLoadingPoints = paidInfo.paid && scoresQuery.isLoading && !scoresQuery.data;
+                return (
                 <div
                   key={`${entry.participant.id}-${idx}`}
                    className={`glass-noise scanlines cut-corners grid grid-cols-[56px_minmax(0,1fr)_84px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] sm:grid-cols-[70px_minmax(0,1fr)_120px] ${podiumClass(
@@ -321,10 +340,20 @@ const Ranking = () => {
                   </div>
 
                   <div className="text-right text-base font-semibold tabular-nums text-glow sm:text-lg whitespace-nowrap">
-                    {paidInfo.paid ? <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} /> : <span>—</span>}
+                    {!paidInfo.paid ? (
+                      <span>—</span>
+                    ) : isLoadingPoints ? (
+                      <div className="inline-flex items-center justify-end gap-2">
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        <span className="text-xs text-muted-foreground">...</span>
+                      </div>
+                    ) : (
+                      <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} />
+                    )}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </Card>
