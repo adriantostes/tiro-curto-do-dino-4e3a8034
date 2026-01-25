@@ -244,7 +244,7 @@ const Ranking = () => {
               </Card>
             ) : null}
 
-            <div className="grid grid-cols-[64px_1fr_96px] gap-3 text-xs text-muted-foreground tracking-[0.18em] sm:grid-cols-[70px_1fr_120px]">
+            <div className="grid grid-cols-[56px_minmax(0,1fr)_84px] gap-3 text-xs text-muted-foreground tracking-[0.18em] sm:grid-cols-[70px_minmax(0,1fr)_120px]">
               <div>POS</div>
               <div>TIME</div>
               <div className="text-right">PONTOS</div>
@@ -274,7 +274,7 @@ const Ranking = () => {
                 .map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
-                   className={`glass-noise scanlines cut-corners grid grid-cols-[64px_1fr_96px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] sm:grid-cols-[70px_1fr_120px] ${podiumClass(
+                   className={`glass-noise scanlines cut-corners grid grid-cols-[56px_minmax(0,1fr)_84px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] sm:grid-cols-[70px_minmax(0,1fr)_120px] ${podiumClass(
                     idx
                   )}`}
                 >
@@ -317,7 +317,7 @@ const Ranking = () => {
                     </div>
                   </div>
 
-                  <div className="text-right text-base font-semibold tabular-nums text-glow sm:text-lg">
+                  <div className="text-right text-base font-semibold tabular-nums text-glow sm:text-lg whitespace-nowrap">
                     {paidInfo.paid && typeof entry.points === "number" ? (
                       <AnimatedNumber value={Number(entry.points)} decimals={2} />
                     ) : (
