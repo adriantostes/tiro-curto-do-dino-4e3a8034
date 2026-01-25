@@ -22,7 +22,7 @@ function podiumClass(index: number) {
 
 type LiveEntry = {
   participant: LeaderboardParticipant;
-  points: number;
+  points: number | null;
 };
 
 function isPaidResponse(data: any): data is { paid: boolean; participants: LeaderboardParticipant[] } {
@@ -141,15 +141,22 @@ const Ranking = () => {
         participants.map(async (p): Promise<LiveEntry> => {
           try {
             const score = await cartolaTeamScore(Number(p.cartola_team_id));
+            // Se o time ainda não foi escalado na temporada/rodada, a API pode retornar só uma mensagem.
+            // Nesses casos, mostrar 0 parece “bug”. Melhor exibir “—”.
+            const msg = String((score as any)?.mensagem ?? "").toLowerCase();
+            if (msg.includes("ainda não foi escalado") || msg.includes("ainda nao foi escalado")) {
+              return { participant: p, points: null };
+            }
+
             const points = extractCartolaTeamPoints(score);
-            return { participant: p, points };
+            return { participant: p, points: Number.isFinite(points) ? points : null };
           } catch {
-            return { participant: p, points: 0 };
+            return { participant: p, points: null };
           }
         })
       );
 
-      return results.sort((a, b) => b.points - a.points);
+      return results.sort((a, b) => (b.points ?? -1) - (a.points ?? -1));
     },
     enabled: !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
     staleTime: 10_000,
@@ -237,7 +244,7 @@ const Ranking = () => {
               </Card>
             ) : null}
 
-            <div className="grid grid-cols-[70px_1fr_120px] gap-3 text-xs text-muted-foreground tracking-[0.18em]">
+            <div className="grid grid-cols-[64px_1fr_96px] gap-3 text-xs text-muted-foreground tracking-[0.18em] sm:grid-cols-[70px_1fr_120px]">
               <div>POS</div>
               <div>TIME</div>
               <div className="text-right">PONTOS</div>
@@ -261,11 +268,13 @@ const Ranking = () => {
                 </Card>
               ) : null}
 
-              {(paidInfo.paid ? (scoresQuery.data ?? []) : publicEntries.map((p) => ({ participant: p, points: 0 })))
+              {(paidInfo.paid
+                ? (scoresQuery.data ?? [])
+                : publicEntries.map((p) => ({ participant: p, points: null })))
                 .map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
-                  className={`glass-noise scanlines cut-corners grid grid-cols-[70px_1fr_120px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] ${podiumClass(
+                   className={`glass-noise scanlines cut-corners grid grid-cols-[64px_1fr_96px] items-center gap-3 rounded-2xl px-4 py-3 transition hover:translate-y-[-1px] sm:grid-cols-[70px_1fr_120px] ${podiumClass(
                     idx
                   )}`}
                 >
@@ -308,8 +317,12 @@ const Ranking = () => {
                     </div>
                   </div>
 
-                  <div className="text-right text-lg font-semibold tabular-nums text-glow">
-                    {paidInfo.paid ? <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} /> : <span>—</span>}
+                  <div className="text-right text-base font-semibold tabular-nums text-glow sm:text-lg">
+                    {paidInfo.paid && typeof entry.points === "number" ? (
+                      <AnimatedNumber value={Number(entry.points)} decimals={2} />
+                    ) : (
+                      <span>—</span>
+                    )}
                   </div>
                 </div>
               ))}
