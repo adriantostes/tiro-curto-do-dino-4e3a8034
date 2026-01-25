@@ -22,7 +22,7 @@ function podiumClass(index: number) {
 
 type LiveEntry = {
   participant: LeaderboardParticipant;
-  points: number | null;
+  points: number;
 };
 
 function isPaidResponse(data: any): data is { paid: boolean; participants: LeaderboardParticipant[] } {
@@ -141,22 +141,15 @@ const Ranking = () => {
         participants.map(async (p): Promise<LiveEntry> => {
           try {
             const score = await cartolaTeamScore(Number(p.cartola_team_id));
-            // Se o time ainda não foi escalado na temporada/rodada, a API pode retornar só uma mensagem.
-            // Nesses casos, mostrar 0 parece “bug”. Melhor exibir “—”.
-            const msg = String((score as any)?.mensagem ?? "").toLowerCase();
-            if (msg.includes("ainda não foi escalado") || msg.includes("ainda nao foi escalado")) {
-              return { participant: p, points: null };
-            }
-
             const points = extractCartolaTeamPoints(score);
-            return { participant: p, points: Number.isFinite(points) ? points : null };
+            return { participant: p, points: Number.isFinite(points) ? points : 0 };
           } catch {
-            return { participant: p, points: null };
+            return { participant: p, points: 0 };
           }
         })
       );
 
-      return results.sort((a, b) => (b.points ?? -1) - (a.points ?? -1));
+      return results.sort((a, b) => b.points - a.points);
     },
     enabled: !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
     staleTime: 10_000,
@@ -270,7 +263,7 @@ const Ranking = () => {
 
               {(paidInfo.paid
                 ? (scoresQuery.data ?? [])
-                : publicEntries.map((p) => ({ participant: p, points: null })))
+                : publicEntries.map((p) => ({ participant: p, points: 0 })))
                 .map((entry, idx) => (
                 <div
                   key={`${entry.participant.id}-${idx}`}
@@ -318,11 +311,7 @@ const Ranking = () => {
                   </div>
 
                   <div className="text-right text-base font-semibold tabular-nums text-glow sm:text-lg whitespace-nowrap">
-                    {paidInfo.paid && typeof entry.points === "number" ? (
-                      <AnimatedNumber value={Number(entry.points)} decimals={2} />
-                    ) : (
-                      <span>—</span>
-                    )}
+                    {paidInfo.paid ? <AnimatedNumber value={Number(entry.points ?? 0)} decimals={2} /> : <span>—</span>}
                   </div>
                 </div>
               ))}
