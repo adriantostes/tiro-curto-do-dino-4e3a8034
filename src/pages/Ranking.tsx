@@ -137,23 +137,33 @@ const Ranking = () => {
       const participants = paidInfo.participants;
       if (!currentRound || participants.length === 0) return [] as LiveEntry[];
 
-      const results = await Promise.all(
-        participants.map(async (p): Promise<LiveEntry> => {
-          try {
-            const score = await cartolaTeamScore(Number(p.cartola_team_id));
-            const points = extractCartolaTeamPoints(score);
-            return { participant: p, points: Number.isFinite(points) ? points : 0 };
-          } catch {
-            return { participant: p, points: 0 };
-          }
-        })
-      );
+      // OTIMIZAÇÃO: Processa em batches paralelos para evitar sobrecarga
+      const BATCH_SIZE = 8;
+      const batches: LiveEntry[] = [];
 
-      return results.sort((a, b) => b.points - a.points);
+      for (let i = 0; i < participants.length; i += BATCH_SIZE) {
+        const chunk = participants.slice(i, i + BATCH_SIZE);
+        const chunkResults = await Promise.all(
+          chunk.map(async (p): Promise<LiveEntry> => {
+            try {
+              const score = await cartolaTeamScore(Number(p.cartola_team_id));
+              const points = extractCartolaTeamPoints(score);
+              return { participant: p, points: Number.isFinite(points) ? points : 0 };
+            } catch (err) {
+              console.warn(`Falha ao buscar pontos do time ${p.cartola_team_id}:`, err);
+              return { participant: p, points: 0 };
+            }
+          })
+        );
+        batches.push(...chunkResults);
+      }
+
+      return batches.sort((a, b) => b.points - a.points);
     },
     enabled: !!currentRound && paidInfo.paid && paidInfo.participants.length > 0,
-    staleTime: 10_000,
-    refetchInterval: 60_000,
+    staleTime: 15_000, // Cache mais agressivo (15s)
+    refetchInterval: 45_000, // Polling mais leve (45s)
+    gcTime: 300_000, // Mantém dados em cache por 5min
   });
 
   const publicEntries = useMemo(() => {
