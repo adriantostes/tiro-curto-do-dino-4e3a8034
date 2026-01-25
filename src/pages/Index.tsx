@@ -288,7 +288,7 @@ const Index = () => {
           </div>
           <div className="leading-tight">
             <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Cartola FC</p>
-            <p className="font-display text-base sm:text-lg font-semibold tracking-[0.24em]">TIRO CURTO DO DINO</p>
+              <p className="font-display text-base sm:text-lg font-semibold tracking-[0.24em]">MELHOR DA RODADA DO DINO</p>
           </div>
         </div>
 
@@ -316,7 +316,7 @@ const Index = () => {
             <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center animate-hud-flicker">
             <header>
               <h1 className="font-display font-extrabold leading-[0.95] whitespace-nowrap text-[clamp(1.35rem,5.2vw,3.5rem)] tracking-[0.08em] sm:tracking-[0.18em]">
-                TIRO CURTO DO DINO
+                MELHOR DA RODADA DO DINO
               </h1>
               <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
                 Selecione seu time, garanta sua vaga e acompanhe o{" "}
