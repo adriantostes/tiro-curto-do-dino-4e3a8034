@@ -1,4 +1,12 @@
 export function extractCartolaTeamPoints(payload: any): number {
+  // Se o time não foi escalado ainda, retorna 0
+  if (payload?.mensagem && typeof payload.mensagem === "string") {
+    const msg = String(payload.mensagem).toLowerCase();
+    if (msg.includes("não foi escalado") || msg.includes("nao foi escalado")) {
+      return 0;
+    }
+  }
+
   // A API do Cartola muda nomes de campos; aqui tentamos vários caminhos conhecidos.
   const candidates: unknown[] = [
     payload?.pontos,

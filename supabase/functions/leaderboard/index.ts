@@ -101,6 +101,9 @@ Deno.serve(async (req) => {
     const legacyIds = (payments ?? []).map((p: any) => p.participant_id).filter(Boolean);
     const bulkIds = (items ?? []).map((i: any) => i.participant_id).filter(Boolean);
     const ids = Array.from(new Set([...legacyIds, ...bulkIds]));
+
+    console.log(`[LEADERBOARD] Round ${round}: legacy=${legacyIds.length}, bulk=${bulkIds.length}, total=${ids.length}, isPaid=${isPaid}`);
+
     if (ids.length === 0) return json({ paid: isPaid, participants: [] }, { status: 200 });
 
     let query = serviceClient
