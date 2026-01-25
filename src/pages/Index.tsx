@@ -467,10 +467,12 @@ const Index = () => {
                     <Button
                       onClick={handleAddToCart}
                       disabled={joining}
-                      className="h-12 rounded-none cut-corners skew-wrap px-6 font-semibold tracking-[0.14em] animate-neon-pulse"
+                      className="h-12 w-full sm:w-auto rounded-none cut-corners skew-wrap px-4 sm:px-6 font-semibold text-xs sm:text-sm tracking-[0.08em] sm:tracking-[0.14em] animate-neon-pulse"
                     >
-                      <span className="skew-inner">
-                        ADICIONAR AO CARRINHO <span className="text-glow">(R$ 10,00)</span>
+                      <span className="skew-inner block w-full whitespace-nowrap text-center leading-none">
+                        <span className="inline sm:hidden">ADICIONAR</span>
+                        <span className="hidden sm:inline">ADICIONAR AO CARRINHO</span>{" "}
+                        <span className="text-glow">(R$ 10,00)</span>
                       </span>
                     </Button>
                   </div>
