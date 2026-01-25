@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/hooks/useSession";
 import { cartolaMarketStatus, cartolaTeamScore } from "@/lib/cartola";
 import { extractCartolaTeamPoints } from "@/lib/cartolaPoints";
 import { fetchPaidParticipants, type LeaderboardParticipant } from "@/lib/leaderboard";
+import { supabase } from "@/integrations/supabase/client";
 
 function podiumClass(index: number) {
   // Sem cores hardcoded: usa tokens semânticos
@@ -29,6 +31,10 @@ function isPaidResponse(data: any): data is { paid: boolean; participants: Leade
 
 const Ranking = () => {
   const { user } = useSession();
+  const { toast } = useToast();
+  const [reconciling, setReconciling] = useState(false);
+  const [lastPendingPaymentId, setLastPendingPaymentId] = useState<string | null>(null);
+  const hasAutoReconciledRef = useRef(false);
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -63,6 +69,67 @@ const Ranking = () => {
     // safety fallback (shouldn't happen)
     return { paid: false, participants: [] as LeaderboardParticipant[] };
   }, [participantsQuery.data]);
+
+  async function reconcilePendingPayment() {
+    if (!user || !currentRound) return;
+    setReconciling(true);
+    try {
+      // 1) Pega o pagamento mais recente que ainda não está aprovado (RLS limita ao próprio usuário)
+      const { data: pending, error: pendingErr } = await supabase
+        .from("payments")
+        .select("id,status")
+        .eq("user_id", user.id)
+        .eq("round_number", currentRound)
+        .neq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (pendingErr) {
+        toast({ title: "Falha ao checar pagamento", description: pendingErr.message });
+        return;
+      }
+
+      if (!pending?.id) {
+        setLastPendingPaymentId(null);
+        return;
+      }
+
+      setLastPendingPaymentId(String(pending.id));
+
+      // 2) Força refresh no backend (consulta o provedor e atualiza status/pix no banco)
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix-bulk", {
+        body: { paymentId: String(pending.id), round: currentRound },
+      });
+
+      if (error) {
+        toast({ title: "Falha ao verificar no provedor", description: error.message });
+        return;
+      }
+
+      const nextStatus = String((data as any)?.status ?? pending.status ?? "pending");
+      if (nextStatus === "approved") {
+        toast({ title: "PAGAMENTO CONFIRMADO", description: "Acesso liberado para a rodada." });
+      } else {
+        toast({ title: "Pagamento ainda pendente", description: "Se você acabou de pagar, pode levar alguns segundos." });
+      }
+
+      await participantsQuery.refetch();
+    } finally {
+      setReconciling(false);
+    }
+  }
+
+  // Auto-reconcilia 1x ao abrir o ranking logado (evita depender só de webhook)
+  useEffect(() => {
+    if (!user || !currentRound) return;
+    if (!participantsQuery.isSuccess) return;
+    if (paidInfo.paid) return;
+    if (hasAutoReconciledRef.current) return;
+    hasAutoReconciledRef.current = true;
+    void reconcilePendingPayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, currentRound, participantsQuery.isSuccess, paidInfo.paid]);
 
   const scoresQuery = useQuery({
     queryKey: ["leaderboard", "scores", currentRound, leagueId, paidInfo.participants.map((p) => p.id).join(",")],
@@ -141,6 +208,25 @@ const Ranking = () => {
                   A lista de participantes é pública, mas a pontuação ao vivo só aparece para quem pagou a rodada.
                   {user ? "" : " Entre/crie uma conta para participar."}
                 </p>
+                {user ? (
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Button
+                      variant="secondary"
+                      className="rounded-none cut-corners skew-wrap"
+                      onClick={() => void reconcilePendingPayment()}
+                      disabled={reconciling}
+                    >
+                      <span className="skew-inner">JÁ PAGUEI • VERIFICAR</span>
+                    </Button>
+                    {lastPendingPaymentId ? (
+                      <p className="text-xs text-muted-foreground">
+                        Pagamento pendente detectado: <span className="text-foreground">{lastPendingPaymentId}</span>
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhum pagamento pendente encontrado nesta rodada.</p>
+                    )}
+                  </div>
+                ) : null}
                 <div className="mt-4">
                   <Button asChild className="rounded-none cut-corners skew-wrap animate-neon-pulse">
                     <Link to="/">
