@@ -85,6 +85,45 @@ export type Database = {
           },
         ]
       }
+      payment_items: {
+        Row: {
+          created_at: string
+          id: string
+          participant_id: string
+          payment_id: string
+          round_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participant_id: string
+          payment_id: string
+          round_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participant_id?: string
+          payment_id?: string
+          round_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_items_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_items_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount_cents: number

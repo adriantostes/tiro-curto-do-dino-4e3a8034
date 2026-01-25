@@ -24,6 +24,11 @@ import dinoHero from "@/assets/dino-hero-user-transparent.png";
 import ligaDoDinoLogo from "@/assets/liga-do-dino-logo-256.png";
 import { QRCodeCanvas } from "qrcode.react";
 
+type CartItem = {
+  participantId: string;
+  team: CartolaTeamSearchItem;
+};
+
 const Index = () => {
   const { toast } = useToast();
   const { user } = useSession();
@@ -31,12 +36,13 @@ const Index = () => {
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<CartolaTeamSearchItem | null>(null);
-  const [participantId, setParticipantId] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [joining, setJoining] = useState(false);
   const [pixOpen, setPixOpen] = useState(false);
   const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
   const [pixStatus, setPixStatus] = useState<string | null>(null);
   const [checkingPix, setCheckingPix] = useState(false);
+  const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -68,7 +74,6 @@ const Index = () => {
 
   async function handleSearch() {
     setSelected(null);
-    setParticipantId(null);
     if (!q.trim()) {
       toast({ title: "Digite o nome do seu time" });
       return;
@@ -80,7 +85,7 @@ const Index = () => {
     }
   }
 
-  async function handleConfirmTeam() {
+  async function ensureParticipantForSelected() {
     if (!user) {
       toast({ title: "Entre para continuar" });
       return;
@@ -118,8 +123,7 @@ const Index = () => {
           .maybeSingle();
 
         if (!existingErr && existing?.id) {
-          setParticipantId(existing.id);
-          return;
+          return existing.id as string;
         }
 
         toast({
@@ -133,11 +137,10 @@ const Index = () => {
       return;
     }
 
-    setParticipantId(data?.id ?? null);
-    toast({ title: "Time confirmado", description: "Agora você pode simular o pagamento da rodada." });
+    return (data?.id ?? null) as string | null;
   }
 
-  async function handleJoin() {
+  async function handleAddToCart() {
     if (!user) {
       toast({ title: "Entre para continuar" });
       navigate("/auth");
@@ -147,36 +150,56 @@ const Index = () => {
       toast({ title: "Selecione seu time primeiro" });
       return;
     }
-    if (!currentRound) {
-      toast({ title: "Não consegui detectar a rodada atual" });
+
+    const existsInCart = cart.some((c) => c.team.time_id === selected.time_id);
+    if (existsInCart) {
+      toast({ title: "Esse time já está no carrinho" });
       return;
     }
 
     setJoining(true);
     try {
+      const participantId = await ensureParticipantForSelected();
       if (!participantId) {
-        await handleConfirmTeam();
-      }
-      // handleConfirmTeam setState is async; buscamos participantId da DB se ainda não estiver no state
-      let pid = participantId;
-      if (!pid) {
-        const { data } = await supabase
-          .from("participants")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("cartola_team_id", selected.time_id)
-          .limit(1)
-          .maybeSingle();
-        pid = data?.id ?? null;
-        setParticipantId(pid);
-      }
-      if (!pid) {
         toast({ title: "Não consegui confirmar seu time" });
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("mercado-pago-pix", {
-        body: { participantId: pid, round: currentRound },
+      setCart((prev) => [...prev, { participantId, team: selected }]);
+      toast({ title: "Adicionado ao carrinho" });
+      setSelected(null);
+      setQ("");
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  const cartTotalCents = useMemo(() => cart.length * 1000, [cart.length]);
+  const cartTotalLabel = useMemo(() => {
+    const value = cartTotalCents / 100;
+    return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }, [cartTotalCents]);
+
+  async function handleCheckout() {
+    if (!user) {
+      toast({ title: "Entre para continuar" });
+      navigate("/auth");
+      return;
+    }
+    if (!currentRound) {
+      toast({ title: "Não consegui detectar a rodada atual" });
+      return;
+    }
+    if (cart.length === 0) {
+      toast({ title: "Seu carrinho está vazio" });
+      return;
+    }
+
+    setJoining(true);
+    try {
+      const participantIds = cart.map((c) => c.participantId);
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix-bulk", {
+        body: { participantIds, round: currentRound },
       });
 
       if (error) {
@@ -184,8 +207,24 @@ const Index = () => {
         return;
       }
 
-      setPixCopyPaste((data as any)?.pixCopyPaste ?? null);
-      setPixStatus((data as any)?.status ?? "pending");
+      const status = (data as any)?.status ?? "pending";
+      const pix = (data as any)?.pixCopyPaste ?? null;
+      const paymentId = (data as any)?.paymentId ?? null;
+      const excluded = ((data as any)?.excludedParticipantIds ?? []) as string[];
+
+      if (excluded.length) {
+        setCart((prev) => prev.filter((c) => !excluded.includes(c.participantId)));
+      }
+
+      if (status === "approved") {
+        toast({ title: "Tudo certo", description: "Os times do carrinho já estavam pagos nesta rodada." });
+        navigate("/ranking");
+        return;
+      }
+
+      setActivePaymentId(paymentId);
+      setPixCopyPaste(pix);
+      setPixStatus(status);
       setPixOpen(true);
       toast({ title: "PIX gerado", description: "Pague para liberar o Ranking Ao Vivo." });
     } finally {
@@ -194,12 +233,12 @@ const Index = () => {
   }
 
   async function checkPaymentStatus() {
-    if (!user || !currentRound || !participantId) return;
+    if (!user || !currentRound || !activePaymentId) return;
     setCheckingPix(true);
     try {
       // Ask backend to refresh payment status from provider and return the latest state.
-      const { data, error } = await supabase.functions.invoke("mercado-pago-pix", {
-        body: { participantId, round: currentRound },
+      const { data, error } = await supabase.functions.invoke("mercado-pago-pix-bulk", {
+        body: { paymentId: activePaymentId, round: currentRound },
       });
       if (error) return;
 
@@ -221,7 +260,7 @@ const Index = () => {
   // Polling leve enquanto o modal está aberto e o status ainda é pending
   useEffect(() => {
     if (!pixOpen) return;
-    if (!user || !currentRound || !participantId) return;
+    if (!user || !currentRound || !activePaymentId) return;
     if (pixStatus === "approved") return;
 
     const id = window.setInterval(() => {
@@ -230,7 +269,7 @@ const Index = () => {
 
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixOpen, pixStatus, user?.id, currentRound, participantId]);
+  }, [pixOpen, pixStatus, user?.id, currentRound, activePaymentId]);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -370,7 +409,6 @@ const Index = () => {
                         type="button"
                         onClick={() => {
                           setSelected(t);
-                          setParticipantId(null);
                         }}
                         className={`glass-noise cut-corners rounded-2xl px-4 py-3 text-left transition hover:translate-y-[-1px] ${
                           isSelected ? "ring-2 ring-primary/40" : "ring-1 ring-border/60"
@@ -421,18 +459,64 @@ const Index = () => {
                     </div>
 
                     <Button
-                      onClick={handleJoin}
+                      onClick={handleAddToCart}
                       disabled={joining}
                       className="h-12 rounded-none cut-corners skew-wrap px-6 font-semibold tracking-[0.14em] animate-neon-pulse"
                     >
                       <span className="skew-inner">
-                        QUERO PARTICIPAR <span className="text-glow">(R$ 10,00)</span>
+                        ADICIONAR AO CARRINHO <span className="text-glow">(R$ 10,00)</span>
                       </span>
                     </Button>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Ao clicar, vamos gerar o PIX (QR + copia/cola) para pagamento desta rodada.
+                    Você pode adicionar vários times e pagar tudo de uma vez no checkout.
                   </p>
+                </Card>
+              </div>
+            ) : null}
+
+            {cart.length ? (
+              <div className="mt-6 animate-enter">
+                <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-display text-base font-semibold tracking-[0.14em]">CARRINHO</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {cart.length} time(s) • Total: <span className="text-foreground">{cartTotalLabel}</span>
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleCheckout}
+                      disabled={joining}
+                      className="h-12 rounded-none cut-corners skew-wrap px-6 font-semibold tracking-[0.14em] animate-neon-pulse"
+                    >
+                      <span className="skew-inner">FINALIZAR E PAGAR</span>
+                    </Button>
+                  </div>
+
+                  <Separator className="my-4" />
+
+                  <div className="grid gap-2">
+                    {cart.map((item) => (
+                      <div
+                        key={item.participantId}
+                        className="glass-noise scanlines cut-corners flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ring-1 ring-border/60"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{item.team.nome}</p>
+                          <p className="truncate text-xs text-muted-foreground">ID {item.team.time_id}</p>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="rounded-none cut-corners skew-wrap"
+                          onClick={() => setCart((prev) => prev.filter((c) => c.participantId !== item.participantId))}
+                        >
+                          <span className="skew-inner">REMOVER</span>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </Card>
               </div>
             ) : null}
