@@ -9,6 +9,7 @@ import Ranking from "./pages/Ranking";
 import Auth from "./pages/Auth";
  import Admin from "./pages/Admin";
  import { ProtectedRoute } from "./components/ProtectedRoute";
+import { BuildStamp } from "./components/BuildStamp";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+         <BuildStamp />
       </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
