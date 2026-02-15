@@ -25,9 +25,23 @@ import ligaDoDinoLogo from "@/assets/liga-do-dino-logo-256.png";
 import { QRCodeCanvas } from "qrcode.react";
 
 type CartItem = {
-  participantId: string;
+  reservationId: string;
   team: CartolaTeamSearchItem;
+  expiresAt?: string | null;
 };
+
+function friendlyFunctionError(fnName: string, err: any) {
+  const msg = String(err?.message ?? err ?? "");
+  const status = (err as any)?.context?.status ?? (err as any)?.status;
+  // Common Supabase SDK messages are not user-friendly; map them.
+  if (String(status) === "404") {
+    return `A função ${fnName} não está publicada no Supabase (404).`;
+  }
+  if (msg.toLowerCase().includes("failed to send a request to the edge function")) {
+    return `Não consegui acessar a função ${fnName}. Geralmente é porque ela ainda não foi publicada no Supabase.`;
+  }
+  return msg || `Erro ao chamar a função ${fnName}.`;
+}
 
 const Index = () => {
   const { toast } = useToast();
@@ -41,10 +55,45 @@ const Index = () => {
   const [pixOpen, setPixOpen] = useState(false);
   const [pixCopyPaste, setPixCopyPaste] = useState<string | null>(null);
   const [pixStatus, setPixStatus] = useState<string | null>(null);
+  const [pixExpiresAt, setPixExpiresAt] = useState<string | null>(null);
+  const [pixTick, setPixTick] = useState(0);
   const [checkingPix, setCheckingPix] = useState(false);
   const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState(false);
   const [lastPendingPaymentId, setLastPendingPaymentId] = useState<string | null>(null);
+  const [addingTeamId, setAddingTeamId] = useState<number | null>(null);
+
+  const pixTimeLeftMs = useMemo(() => {
+    if (!pixExpiresAt) return null;
+    const t = new Date(pixExpiresAt).getTime();
+    if (!Number.isFinite(t)) return null;
+    return Math.max(0, t - Date.now());
+  }, [pixExpiresAt, pixTick]);
+
+  const pixTimeLeftLabel = useMemo(() => {
+    if (pixTimeLeftMs == null) return null;
+    const totalSeconds = Math.ceil(pixTimeLeftMs / 1000);
+    const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+    const ss = String(totalSeconds % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  }, [pixTimeLeftMs]);
+
+  const pixProgressPct = useMemo(() => {
+    if (pixTimeLeftMs == null) return null;
+    const total = 10 * 60_000;
+    const pct = (pixTimeLeftMs / total) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }, [pixTimeLeftMs]);
+
+  // Re-render countdown each second while modal is open
+  useEffect(() => {
+    if (!pixOpen) return;
+    if (!pixExpiresAt) return;
+    const id = window.setInterval(() => {
+      setPixTick((t) => t + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [pixOpen, pixExpiresAt]);
 
   const { data: market } = useQuery({
     queryKey: ["cartola", "market_status"],
@@ -87,92 +136,81 @@ const Index = () => {
     }
   }
 
-  async function ensureParticipantForSelected() {
-    if (!user) {
-      toast({ title: "Entre para continuar" });
-      return;
-    }
-    if (!selected) return;
-    if (!league?.id) {
-      toast({ title: "Liga não configurada" });
-      return;
-    }
-
-    const shield = selected.url_escudo_svg ?? selected.url_escudo_png ?? null;
-    const payload = {
-      user_id: user.id,
-      league_id: league.id,
-      team_name: selected.nome,
-      team_slug: selected.slug ?? null,
-      cartola_team_id: selected.time_id,
-      team_shield_url: shield,
-    };
-
-    const { data, error } = await supabase.from("participants").insert(payload).select("id").maybeSingle();
-
-    if (error) {
-      // Unicidade global por liga+time: se já existir, mostramos uma mensagem melhor.
-      // (evita parecer "bug" quando alguém tenta cadastrar um time já usado)
-      if ((error as any)?.code === "23505") {
-        // Se o time já é deste usuário, recupera o id e segue o fluxo.
-        const { data: existing, error: existingErr } = await supabase
-          .from("participants")
-          .select("id")
-          .eq("league_id", league.id)
-          .eq("cartola_team_id", selected.time_id)
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-
-        if (!existingErr && existing?.id) {
-          return existing.id as string;
-        }
-
-        toast({
-          title: "Time já escolhido",
-          description: "Esse time já foi cadastrado por outra pessoa na liga. Escolha outro.",
-        });
-        return;
-      }
-
-      toast({ title: "Não consegui salvar seu time", description: error.message });
-      return;
-    }
-
-    return (data?.id ?? null) as string | null;
-  }
-
-  async function handleAddToCart() {
+  async function addTeamToCart(team: CartolaTeamSearchItem) {
     if (!user) {
       toast({ title: "Entre para continuar" });
       navigate("/auth");
       return;
     }
-    if (!selected) {
-      toast({ title: "Selecione seu time primeiro" });
+    if (!league?.id) {
+      toast({ title: "Aguarde um instante", description: "Carregando dados da liga..." });
       return;
     }
 
-    const existsInCart = cart.some((c) => c.team.time_id === selected.time_id);
+    const existsInCart = cart.some((c) => c.team.time_id === team.time_id);
     if (existsInCart) {
       toast({ title: "Esse time já está no carrinho" });
       return;
     }
 
-    setJoining(true);
+    setAddingTeamId(team.time_id);
     try {
-      const participantId = await ensureParticipantForSelected();
-      if (!participantId) {
-        toast({ title: "Não consegui confirmar seu time" });
+      const shield = team.url_escudo_svg ?? team.url_escudo_png ?? null;
+      const { data, error } = await supabase.functions.invoke("team-reserve", {
+        body: {
+          action: "reserve",
+          leagueId: league.id,
+          team: {
+            cartola_team_id: team.time_id,
+            team_name: team.nome,
+            team_slug: team.slug ?? null,
+      team_shield_url: shield,
+          },
+          ttlMinutes: 10,
+        },
+      });
+
+    if (error) {
+        toast({
+          title: "Não consegui reservar esse time",
+          description: friendlyFunctionError("team-reserve", error),
+        });
         return;
       }
 
-      setCart((prev) => [...prev, { participantId, team: selected }]);
-      toast({ title: "Adicionado ao carrinho" });
-      setSelected(null);
-      setQ("");
+      const reservationId = String((data as any)?.reservationId ?? "");
+      const expiresAt = ((data as any)?.expiresAt as string | undefined) ?? null;
+      if (!reservationId) {
+        toast({ title: "Não consegui reservar esse time" });
+      return;
+    }
+
+      setCart((prev) => [...prev, { reservationId, team, expiresAt }]);
+      toast({ title: "Adicionado ao boletim", description: "Reserva válida por 10 minutos." });
     } finally {
-      setJoining(false);
+      setAddingTeamId(null);
+    }
+  }
+
+  async function handleAddToCart() {
+    if (!selected) {
+      toast({ title: "Selecione seu time primeiro" });
+      return;
+    }
+    await addTeamToCart(selected);
+    setSelected(null);
+  }
+
+  async function removeFromCart(item: CartItem) {
+    // Best-effort: release reservation on server so other people can choose the team
+    try {
+      if (user && league?.id) {
+        await supabase.functions.invoke("team-reserve", {
+          body: { action: "release", leagueId: league.id, cartolaTeamId: item.team.time_id },
+        });
+      }
+    } finally {
+      setCart((prev) => prev.filter((c) => c.reservationId !== item.reservationId));
     }
   }
 
@@ -188,6 +226,10 @@ const Index = () => {
       navigate("/auth");
       return;
     }
+    if (!league?.id) {
+      toast({ title: "Aguarde um instante", description: "Carregando dados da liga..." });
+      return;
+    }
     if (!currentRound) {
       toast({ title: "Não consegui detectar a rodada atual" });
       return;
@@ -199,9 +241,8 @@ const Index = () => {
 
     setJoining(true);
     try {
-      const participantIds = cart.map((c) => c.participantId);
       const { data, error } = await supabase.functions.invoke("mercado-pago-pix-bulk", {
-        body: { participantIds, round: currentRound },
+        body: { reservationIds: cart.map((c) => c.reservationId), leagueId: league.id, round: currentRound },
       });
 
       if (error) {
@@ -212,14 +253,10 @@ const Index = () => {
       const status = (data as any)?.status ?? "pending";
       const pix = (data as any)?.pixCopyPaste ?? null;
       const paymentId = (data as any)?.paymentId ?? null;
-      const excluded = ((data as any)?.excludedParticipantIds ?? []) as string[];
-
-      if (excluded.length) {
-        setCart((prev) => prev.filter((c) => !excluded.includes(c.participantId)));
-      }
+      const expiresAt = ((data as any)?.expiresAt as string | undefined) ?? null;
 
       if (status === "approved") {
-        toast({ title: "Tudo certo", description: "Os times do carrinho já estavam pagos nesta rodada." });
+        toast({ title: "Tudo certo", description: "Pagamento confirmado." });
         navigate("/ranking");
         return;
       }
@@ -227,8 +264,9 @@ const Index = () => {
       setActivePaymentId(paymentId);
       setPixCopyPaste(pix);
       setPixStatus(status);
+      setPixExpiresAt(expiresAt);
       setPixOpen(true);
-      toast({ title: "PIX gerado", description: "Pague para liberar o Ranking Ao Vivo." });
+      toast({ title: "PIX gerado", description: "Você tem 10 minutos para pagar." });
     } finally {
       setJoining(false);
     }
@@ -246,8 +284,10 @@ const Index = () => {
 
       const status = (data as any)?.status as string | undefined;
       const pix = (data as any)?.pixCopyPaste as string | undefined;
+      const expiresAt = (data as any)?.expiresAt as string | undefined;
       if (pix && pix !== pixCopyPaste) setPixCopyPaste(pix);
       if (status && status !== pixStatus) setPixStatus(status);
+      if (expiresAt && expiresAt !== pixExpiresAt) setPixExpiresAt(expiresAt);
 
       if (status === "approved") {
         toast({ title: "PAGAMENTO CONFIRMADO", description: "Seu time foi liberado no Ranking Ao Vivo." });
@@ -299,9 +339,11 @@ const Index = () => {
 
       const nextStatus = String((data as any)?.status ?? pending.status ?? "pending");
       const nextPix = ((data as any)?.pixCopyPaste as string | undefined) ?? null;
+      const nextExpiresAt = ((data as any)?.expiresAt as string | undefined) ?? null;
       setActivePaymentId(String(pending.id));
       setPixStatus(nextStatus);
       if (nextPix) setPixCopyPaste(nextPix);
+      if (nextExpiresAt) setPixExpiresAt(nextExpiresAt);
 
       if (nextStatus === "approved") {
         toast({ title: "PAGAMENTO CONFIRMADO", description: "Acesso liberado para a rodada." });
@@ -343,363 +385,395 @@ const Index = () => {
   }, [pixOpen, pixStatus, user?.id, currentRound, activePaymentId]);
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+    <div className="min-h-screen bg-[#060606] text-white overflow-x-hidden font-sans">
+      <header className="sticky top-0 z-50 w-full bg-[#0a0a0a] border-b border-white/5 shadow-2xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 sm:h-11 sm:w-11 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/25 overflow-hidden">
-            <img
-              src={ligaDoDinoLogo}
-              alt="Logo Liga do Dino"
-              className="h-[44px] w-[44px] object-contain"
-              width={44}
-              height={44}
-              decoding="async"
-              loading="eager"
-            />
+            <div className="flex items-center gap-2">
+              <div className="relative h-9 w-9 bg-primary flex items-center justify-center rounded-br-xl rounded-tl-xl transform -skew-x-12 shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-6 w-6 text-black fill-current transform skew-x-12"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M22,10V6.5c0-1.93-1.57-3.5-3.5-3.5H5.5C3.57,3,2,4.57,2,6.5V10c1.1,0,2,0.9,2,2s-0.9,2-2,2v3.5c0,1.93,1.57,3.5,3.5,3.5h13 c1.93,0,3.5-1.57,3.5-3.5V14c-1.1,0-2-0.9-2-2S20.9,10,22,10z M11,17h-2v-2h2V17z M11,13h-2v-2h2V13z M11,9h-2V7h2V9z M16,17h-2v-2h2 V17z M16,13h-2v-2h2V13z M16,9h-2V7h2V9z" />
+                </svg>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-[10px] sm:text-xs font-black italic tracking-tight text-white/90">
+                  MELHOR DA
+                </span>
+                <span className="text-[10px] sm:text-xs font-black italic tracking-tight text-primary">
+                  RODADA DO DINO
+                </span>
           </div>
-          <div className="leading-tight">
-            <p className="text-[10px] sm:text-xs tracking-wide text-muted-foreground">Cartola FC</p>
-              <p className="font-display text-sm sm:text-lg font-semibold tracking-[0.14em] sm:tracking-[0.24em]">
-                MELHOR DA RODADA DO DINO
-              </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+          <nav className="flex items-center gap-3">
           {user ? (
-            <Button asChild size="sm" className="text-xs sm:text-sm">
-              <Link to="/ranking">RANKING AO VIVO</Link>
+              <Button asChild variant="ghost" className="text-xs font-bold hover:bg-white/5">
+                <Link to="/ranking">RANKING</Link>
             </Button>
           ) : (
-            <Button asChild size="sm" className="text-xs sm:text-sm">
-              <Link to="/auth">ENTRAR</Link>
+              <div className="flex items-center gap-2">
+                <Button asChild variant="ghost" className="text-xs font-bold text-gray-400 hover:text-white">
+                  <Link to="/auth">Login</Link>
+                </Button>
+                <Button asChild size="sm" className="bg-primary text-black font-bold hover:bg-primary/90 rounded-sm px-5">
+                  <Link to="/auth">REGISTRAR</Link>
             </Button>
+              </div>
           )}
+          </nav>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 sm:pb-16 overflow-x-hidden">
-        <section className="relative rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 glass-noise glass-glow stadium-glow scanlines cut-corners animate-enter">
-          {/* Clip only the background glow (NOT the content), so inputs/buttons don't look cut on mobile */}
-          <div
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl opacity-70 [background:radial-gradient(80%_55%_at_15%_15%,hsl(var(--primary)/0.24),transparent_60%),radial-gradient(60%_50%_at_85%_25%,hsl(var(--primary)/0.18),transparent_55%)]"
-            aria-hidden
+      <main className="mx-auto w-full max-w-7xl px-4 pt-6 pb-28 sm:px-6 md:pb-6">
+        <div className="mb-6 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+          <img
+            src="https://i.imgur.com/IdTBtor.jpeg"
+            alt="Banner Melhor da Rodada do Dino"
+            className="w-full h-auto object-cover"
           />
+        </div>
 
-            <div className="relative grid gap-6 sm:gap-8 md:grid-cols-[1.05fr_0.95fr] md:items-center animate-hud-flicker">
-            <header>
-              <h1 className="font-display font-extrabold leading-[0.98] whitespace-normal sm:whitespace-nowrap text-[clamp(1.15rem,4.8vw,3.5rem)] tracking-[0.06em] sm:tracking-[0.18em]">
-                MELHOR DA RODADA DO DINO
-              </h1>
-              <p className="mt-3 sm:mt-4 max-w-xl text-sm sm:text-base text-muted-foreground">
-                Selecione seu time, garanta sua vaga e acompanhe o{" "}
-                <span className="text-foreground">Ranking Ao Vivo</span> em tempo real.
-              </p>
+        <section className="relative mb-8 overflow-hidden rounded-xl bg-gradient-to-br from-[#121212] to-[#080808] border border-white/5 flex flex-col md:flex-row items-center md:min-h-[450px]">
+          <div className="absolute top-0 right-0 w-1/2 h-full bg-primary/5 blur-[120px] pointer-events-none"></div>
 
-              <div className="mt-6 sm:mt-7 grid gap-4 sm:gap-3 min-w-0">
-                <Label htmlFor="team" className="text-sm sm:text-base">
-                  Digite o nome do seu time
-                </Label>
-                <div className="flex w-full min-w-0 flex-col gap-4 sm:gap-3 sm:flex-row">
-                  <div className="glass w-full min-w-0 overflow-hidden rounded-2xl px-4 min-h-[56px] flex items-center">
+          <div className="relative w-full pt-8 flex justify-center md:pt-0 md:absolute md:right-0 md:bottom-0 md:h-full md:w-1/2 md:justify-end pointer-events-none">
+            <img
+              src={dinoHero}
+              alt="Dino Mascote"
+              className="h-40 w-auto object-contain drop-shadow-[0_0_30px_rgba(34,197,94,0.4)] animate-float sm:h-48 md:h-[95%] md:mr-6"
+            />
+          </div>
+
+          <div className="relative z-10 flex flex-col gap-5 p-6 sm:p-10 md:w-2/3">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 ring-1 ring-primary/30 w-fit mx-auto md:mx-0">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary"></span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                Rodada Aberta - Participe Agora
+              </span>
+            </div>
+
+            <h2 className="text-4xl font-black leading-[0.9] tracking-tighter sm:text-6xl md:text-7xl uppercase italic text-center md:text-left">
+              MELHOR DA <br />
+              <span className="text-primary drop-shadow-[0_0_15px_rgba(34,197,94,0.3)]">RODADA DO DINO</span>
+            </h2>
+
+            <p className="max-w-md text-sm text-gray-400 sm:text-base font-medium text-center md:text-left mx-auto md:mx-0">
+              Nossa liga de tiro curto entre amigos! Escolha seu time, entre na disputa e veja quem garante a resenha no topo
+              do ranking em tempo real.
+            </p>
+
+            <div className="flex flex-col gap-4 sm:flex-row mt-2">
+              <div className="flex-1 bg-[#1a1a1a] rounded-xl border border-white/10 p-1.5 flex items-center shadow-2xl relative z-20">
                     <Input
                       id="team"
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder="Digite o nome do seu time"
-                      className="h-14 w-full border-0 bg-transparent px-0 py-0 text-base leading-tight focus-visible:ring-0 focus-visible:ring-offset-0"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSearch}
-                    disabled={searchQuery.isFetching}
-                    className="min-h-[56px] h-auto w-full shrink-0 rounded-none cut-corners skew-wrap px-6 text-base font-semibold tracking-[0.16em] focus-visible:ring-0 focus-visible:ring-offset-0 sm:w-auto"
-                  >
-                    <span className="skew-inner">BUSCAR</span>
-                  </Button>
-                </div>
-
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Rodada atual: <span className="text-foreground">{currentRound ?? "..."}</span>
-                </p>
-              </div>
-
-              {!user ? (
-                <div className="mt-5 sm:mt-6 glass rounded-2xl p-4 sm:p-5">
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Para testar o fluxo completo (e liberar o ranking), entre com sua conta.
-                  </p>
-                  <div className="mt-3 sm:mt-4">
-                    <Button asChild className="rounded-2xl w-full sm:w-auto min-h-[50px]">
-                      <Link to="/auth">ENTRAR / CRIAR CONTA</Link>
+                  placeholder="Nome do seu time..."
+                  className="h-11 border-0 bg-transparent text-white focus-visible:ring-0 focus-visible:ring-offset-0 font-bold placeholder:text-gray-600 px-3 min-w-0 flex-1"
+                />
+                <Button onClick={handleSearch} className="h-11 bg-primary text-black font-black hover:bg-primary/80 px-6 italic shrink-0 rounded-lg">
+                  BUSCAR
                     </Button>
                   </div>
                 </div>
-              ) : null}
-            </header>
 
-            <div className="relative md:justify-self-end">
-              <div className="pointer-events-none absolute -inset-10 rounded-[2.8rem] opacity-60 [background:radial-gradient(circle_at_60%_30%,hsl(var(--primary)/0.28),transparent_62%)]" />
-              <img
-                src={dinoHero}
-                alt="Mascote dinossauro 3D do Tiro Curto do Dino"
-                width={1344}
-                height={768}
-                decoding="async"
-                fetchPriority="high"
-                loading="eager"
-                className="relative z-20 mx-auto w-[380px] max-w-full object-contain sm:w-[520px] sm:-translate-y-10 md:w-[760px] md:max-w-[52vw] md:translate-x-20 md:-translate-y-16 md:scale-[1.18] animate-float drop-shadow-[0_56px_170px_hsl(var(--primary)/0.24)]"
-              />
+            <div className="flex items-center justify-center md:justify-start gap-6 mt-2 relative z-20">
+              <div className="flex flex-col items-center md:items-start">
+                <span className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Rodada Atual</span>
+                <span className="text-2xl font-black text-white italic">#{currentRound ?? "--"}</span>
+              </div>
+              <div className="h-10 w-[1px] bg-white/10"></div>
+              <div className="flex flex-col items-center md:items-start">
+                <span className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Taxa de Entrada</span>
+                <span className="text-2xl font-black text-primary italic">R$ 10,00</span>
             </div>
           </div>
+          </div>
+
+          
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
-          <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-6 md:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid gap-6 md:grid-cols-3 items-start">
+          <div className="md:col-span-2 space-y-6">
+            <Card className="bg-[#121212] border-white/5 p-6 rounded-xl">
+              <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="font-display text-2xl font-semibold tracking-[0.14em]">Selecione seu time</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Encontre seu time e garanta sua vaga na rodada.</p>
+                  <h3 className="text-lg font-bold uppercase italic tracking-wider">Selecione seu Time</h3>
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-tight">Busque e adicione ao seu boletim</p>
+                </div>
+                <div className="rounded bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary ring-1 ring-primary/20 uppercase">
+                  Ao Vivo
               </div>
-              <Button
-                variant="secondary"
-                asChild
-                className="w-full sm:w-auto rounded-none cut-corners skew-wrap text-xs sm:text-sm"
-              >
-                <Link to="/ranking">
-                  <span className="skew-inner">VER RANKING</span>
-                </Link>
-              </Button>
             </div>
 
-            <Separator className="my-5" />
-
             {searchQuery.data?.length ? (
-              <div className="grid gap-3">
-                <p className="text-xs text-muted-foreground">Resultados (selecione o seu):</p>
-                <div className="grid gap-2 md:grid-cols-2">
-                  {searchQuery.data.slice(0, 8).map((t) => {
-                    const isSelected = selected?.time_id === t.time_id;
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {searchQuery.data.slice(0, 10).map((t) => {
+                    const isInCart = cart.some(c => c.team.time_id === t.time_id);
                     return (
-                      <button
+                      <div
                         key={t.time_id}
-                        type="button"
-                        onClick={() => {
-                          setSelected(t);
-                        }}
-                        className={`glass-noise cut-corners rounded-2xl px-4 py-3 text-left transition hover:translate-y-[-1px] ${
-                          isSelected ? "ring-2 ring-primary/40" : "ring-1 ring-border/60"
+                        className={`group relative flex items-center gap-3 rounded-xl border p-3 transition-all ${
+                          isInCart
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-white/5 bg-[#1a1a1a] hover:border-white/20 hover:bg-[#222]"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold">{t.nome}</p>
-                            <p className="truncate text-xs text-muted-foreground">{t.nome_cartola}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground">ID {t.time_id}</span>
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#0a0a0a] p-1.5 ring-1 ring-white/10 group-hover:ring-primary/40">
+                          <img src={t.url_escudo_svg ?? t.url_escudo_png} alt="" className="h-full w-full object-contain" />
                         </div>
-                      </button>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-black text-white uppercase italic">{t.nome}</p>
+                          <p className="truncate text-[9px] font-bold uppercase text-gray-500 tracking-tight">{t.nome_cartola}</p>
+                          </div>
+                        <Button
+                          size="sm"
+                          disabled={isInCart || addingTeamId === t.time_id}
+                          onClick={() => void addTeamToCart(t)}
+                          className={`h-8 px-3 text-[10px] font-black uppercase italic tracking-widest transition-all ${
+                            isInCart 
+                            ? "bg-primary/20 text-primary border border-primary/20" 
+                            : "bg-primary text-black hover:scale-105"
+                          }`}
+                        >
+                          {isInCart ? "SALVO" : addingTeamId === t.time_id ? "..." : "ADD"}
+                        </Button>
+                        </div>
                     );
                   })}
                 </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-white/5 rounded-xl">
+                  <div className="mb-3 text-gray-600">
+                    <svg className="h-10 w-10 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
               </div>
-            ) : (
-              <div className="grid gap-2">
-                <p className="text-sm text-muted-foreground">Faça a busca para ver os times aqui.</p>
+                  <p className="text-sm font-bold text-gray-500 uppercase">Busque seu time para começar</p>
               </div>
             )}
+            </Card>
+          </div>
 
-            {selected ? (
-              <div className="mt-6 animate-enter">
-                <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 overflow-hidden rounded-2xl bg-muted ring-1 ring-border">
-                        {selected.url_escudo_png || selected.url_escudo_svg ? (
-                          <img
-                            src={selected.url_escudo_svg ?? selected.url_escudo_png}
-                            alt={`Escudo ${selected.nome}`}
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="h-full w-full [background:radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_60%)]"
-                            aria-hidden
-                          />
-                        )}
+          <div className="space-y-6">
+            {/* Carrinho como "Bet Slip" na lateral */}
+            {cart.length > 0 ? (
+              <Card
+                id="bet-slip"
+                className="bg-[#121212] border-primary/30 p-5 rounded-xl ring-1 ring-primary/20 sticky top-20 shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-enter"
+              >
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-black uppercase italic text-primary tracking-widest">MEU BOLETIM</h3>
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">{cart.length} {cart.length === 1 ? "seleção" : "seleções"}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold">{selected.nome}</p>
-                        <p className="truncate text-sm text-muted-foreground">{selected.nome_cartola}</p>
+                  <div className="text-right">
+                    <p className="text-[9px] uppercase font-bold text-gray-600">Total</p>
+                    <p className="text-xl font-black text-white italic">{cartTotalLabel}</p>
                       </div>
                     </div>
 
-                    <Button
-                      onClick={handleAddToCart}
-                      disabled={joining}
-                      className="h-12 w-full sm:w-auto rounded-none cut-corners skew-wrap px-4 sm:px-6 font-semibold text-xs sm:text-sm tracking-[0.08em] sm:tracking-[0.14em] animate-neon-pulse"
-                    >
-                      <span className="skew-inner block w-full whitespace-nowrap text-center leading-none">
-                        <span className="inline sm:hidden">ADICIONAR</span>
-                        <span className="hidden sm:inline">ADICIONAR AO CARRINHO</span>{" "}
-                        <span className="text-glow">(R$ 10,00)</span>
-                      </span>
-                    </Button>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                  {cart.map((item) => (
+                    <div key={item.reservationId} className="group flex items-center justify-between rounded-lg bg-[#1a1a1a] border border-white/5 p-3 hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-7 w-7 rounded bg-black/40 p-1 shrink-0">
+                          <img src={item.team.url_escudo_svg ?? item.team.url_escudo_png} alt="" className="h-full w-full object-contain" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-black text-white uppercase italic truncate">{item.team.nome}</p>
+                        </div>
+                      </div>
+                      <button
+                        className="text-[9px] font-black text-gray-600 hover:text-red-500 uppercase italic tracking-tighter"
+                        onClick={() => void removeFromCart(item)}
+                      >
+                        REMOVER
+                      </button>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Você pode adicionar vários times e pagar tudo de uma vez no checkout.
-                  </p>
-                </Card>
+                  ))}
               </div>
-            ) : null}
 
-            {cart.length ? (
-              <div className="mt-6 animate-enter">
-                <Card className="glass-noise glass-glow stadium-glow scanlines cut-corners rounded-3xl p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-display text-base font-semibold tracking-[0.14em]">CARRINHO</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {cart.length} time(s) • Total: <span className="text-foreground">{cartTotalLabel}</span>
-                      </p>
-                    </div>
+                <div className="mt-5 space-y-3">
                     <Button
                       onClick={handleCheckout}
                       disabled={joining}
-                      className="h-12 rounded-none cut-corners skew-wrap px-6 font-semibold tracking-[0.14em] animate-neon-pulse"
+                    className="w-full bg-primary text-black font-black hover:bg-primary/90 h-14 rounded-lg uppercase tracking-widest italic text-base shadow-[0_0_20px_rgba(34,197,94,0.3)] group"
                     >
-                      <span className="skew-inner">FINALIZAR E PAGAR</span>
+                    {joining ? "PROCESSANDO..." : "FINALIZAR E PAGAR"}
                     </Button>
-                  </div>
 
-                  {user ? (
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  {user && (
                       <Button
-                        type="button"
-                        variant="secondary"
-                        className="rounded-none cut-corners skew-wrap"
-                        onClick={() => void reconcilePendingPayment()}
-                        disabled={reconciling}
-                      >
-                        <span className="skew-inner">JÁ PAGUEI • VERIFICAR</span>
+                      variant="ghost"
+                      className="w-full border border-white/5 hover:bg-white/5 text-[10px] font-black uppercase italic h-10 tracking-widest text-gray-500"
+                      onClick={reconcilePendingPayment}
+                    >
+                      JÁ PAGUEI • VERIFICAR
                       </Button>
-                      {lastPendingPaymentId ? (
-                        <p className="text-xs text-muted-foreground">
-                          Pagamento pendente detectado: <span className="text-foreground">{lastPendingPaymentId}</span>
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Nenhum pagamento pendente encontrado nesta rodada.</p>
                       )}
                     </div>
-                  ) : null}
+              </Card>
+            ) : (
+              <Card className="bg-[#121212] border-white/5 p-6 rounded-xl text-center py-12">
+                <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 border border-white/5">
+                  <svg className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <h3 className="text-xs font-black uppercase italic text-gray-600 tracking-widest mb-1">BOLETIM VAZIO</h3>
+                <p className="text-[10px] text-gray-700 font-bold uppercase">Selecione um time para começar</p>
+              </Card>
+            )}
 
-                  <Separator className="my-4" />
-
-                  <div className="grid gap-2">
-                    {cart.map((item) => (
-                      <div
-                        key={item.participantId}
-                        className="glass-noise scanlines cut-corners flex items-center justify-between gap-3 rounded-2xl px-4 py-3 ring-1 ring-border/60"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold">{item.team.nome}</p>
-                          <p className="truncate text-xs text-muted-foreground">ID {item.team.time_id}</p>
+            <Card className="bg-[#121212] border-white/5 p-6 rounded-xl">
+              <h3 className="text-sm font-bold uppercase italic text-primary mb-4 tracking-widest">Como Funciona</h3>
+              <div className="space-y-6">
+                {[
+                  { step: "01", title: "ESCALAÇÃO", desc: "Busque seu time oficial do Cartola pelo nome." },
+                  { step: "02", title: "DEPÓSITO", desc: "Faça o pagamento da taxa de R$ 10 via PIX." },
+                  { step: "03", title: "AO VIVO", desc: "Acompanhe sua pontuação em tempo real no ranking." },
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4">
+                    <span className="text-xl font-black italic text-white/10 leading-none">{item.step}</span>
+                    <div>
+                      <h4 className="text-xs font-black uppercase italic mb-1">{item.title}</h4>
+                      <p className="text-xs text-gray-500 font-bold leading-relaxed tracking-tight">{item.desc}</p>
                         </div>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="rounded-none cut-corners skew-wrap"
-                          onClick={() => setCart((prev) => prev.filter((c) => c.participantId !== item.participantId))}
-                        >
-                          <span className="skew-inner">REMOVER</span>
-                        </Button>
                       </div>
                     ))}
                   </div>
                 </Card>
-              </div>
-            ) : null}
-          </Card>
 
-          <Card className="glass-noise glass-glow scanlines cut-corners rounded-3xl p-6 md:p-8">
-            <h3 className="font-display text-xl font-semibold tracking-[0.14em]">Como funciona</h3>
-            <ol className="mt-5 space-y-3 text-sm">
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
-                  1
-                </span>
-                <div>
-                  <p className="font-medium">Buscar time</p>
-                  <p className="text-muted-foreground">Digite o nome e selecione o seu.</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
-                  2
-                </span>
-                <div>
-                  <p className="font-medium">Confirmar + pagar</p>
-                  <p className="text-muted-foreground">Geramos o PIX (R$ 10,00) e liberamos após aprovação.</p>
-                </div>
-              </li>
-              <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground ring-1 ring-border">
-                  3
-                </span>
-                <div>
-                  <p className="font-medium">Ranking Ao Vivo</p>
-                  <p className="text-muted-foreground">Somente pagantes da rodada aparecem no dashboard.</p>
-                </div>
-              </li>
-            </ol>
+            <Card className="bg-gradient-to-br from-[#121212] to-primary/5 border-primary/10 p-6 rounded-xl">
+              <h3 className="text-sm font-bold uppercase italic text-white mb-2 tracking-widest text-center">Próximo Ranking</h3>
+              <div className="text-center py-4">
+                <p className="text-4xl font-black text-primary italic leading-none mb-2">AO VIVO</p>
+                <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.2em] mb-4">Atualização Instantânea</p>
+                <Button asChild className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-black uppercase italic tracking-widest py-6">
+                  <Link to="/ranking">Ver Leaderboard</Link>
+                </Button>
+              </div>
           </Card>
-        </section>
+          </div>
+        </div>
       </main>
+
+      {/* Barra fixa no mobile: deixa a finalização clara e sempre acessível */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+          <div className="mx-auto max-w-7xl px-4 pb-4">
+            <div className="rounded-2xl border border-white/10 bg-[#0a0a0a]/95 backdrop-blur shadow-2xl p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-600">Boletim</p>
+                  <p className="text-sm font-black italic truncate">
+                    {cart.length} {cart.length === 1 ? "time" : "times"} • <span className="text-primary">{cartTotalLabel}</span>
+                  </p>
+                </div>
+                <Button
+                  onClick={handleCheckout}
+                  disabled={joining}
+                  className="bg-primary text-black font-black hover:bg-primary/90 h-12 px-5 rounded-xl uppercase italic tracking-widest shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                >
+                  FINALIZAR
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="mt-12 bg-[#060606] border-t border-white/5 py-12 px-4 text-center">
+        <div className="max-w-7xl mx-auto flex flex-col items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 bg-primary/20 rounded-sm flex items-center justify-center">
+              <div className="h-3 w-3 bg-primary rounded-full"></div>
+            </div>
+            <span className="text-sm font-black italic tracking-tighter text-white">
+              MELHOR DA RODADA DO <span className="text-primary">DINO</span>
+                </span>
+                </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-black uppercase text-gray-700 tracking-[0.4em]">© 2026 MELHOR DA RODADA DO DINO</p>
+            <p className="text-[9px] font-bold text-gray-800 uppercase tracking-widest">Aposte com Responsabilidade • 18+</p>
+                </div>
+                </div>
+      </footer>
 
       <Dialog open={pixOpen} onOpenChange={setPixOpen}>
         <DialogContent
-          className="glass-noise glass-glow stadium-glow scanlines cut-corners max-w-md rounded-3xl"
+          className="max-w-md rounded-3xl border border-white/10 bg-[#0a0a0a] text-white shadow-2xl"
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
-            <DialogTitle className="font-display tracking-[0.18em]">PAGUE COM PIX</DialogTitle>
-            <DialogDescription>
-              Status: <span className="text-foreground">{pixStatus ?? "pending"}</span>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <DialogTitle className="text-xl font-black italic uppercase tracking-widest">PAGUE COM PIX</DialogTitle>
+                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                  Status: <span className="text-white">{pixStatus ?? "pending"}</span>
             </DialogDescription>
+              </div>
+              {pixTimeLeftLabel ? (
+                <div className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                  EXPIRA EM {pixTimeLeftLabel}
+                </div>
+              ) : null}
+            </div>
+            {pixProgressPct != null ? (
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full bg-primary transition-[width] duration-500"
+                  style={{ width: `${pixProgressPct}%` }}
+                />
+              </div>
+            ) : null}
           </DialogHeader>
 
           {pixStatus === "approved" ? (
             <div className="grid gap-3">
-              <div className="glass-noise scanlines cut-corners rounded-2xl p-4">
-                <p className="font-display text-lg font-extrabold tracking-[0.14em] text-glow">PAGAMENTO CONFIRMADO</p>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Seu time já está liberado. Entre no Ranking Ao Vivo para ver sua posição.
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-lg font-black uppercase italic tracking-wider text-primary">PAGAMENTO CONFIRMADO</p>
+                <p className="mt-2 text-sm font-medium text-gray-400">
+                  Acesso liberado. Você já pode ver sua posição no ranking.
                 </p>
               </div>
             </div>
           ) : pixCopyPaste ? (
             <div className="grid gap-4">
-              <div className="mx-auto rounded-2xl bg-background p-3 ring-1 ring-border">
+              <div className="mx-auto rounded-2xl bg-white p-3 ring-1 ring-white/10">
                 <QRCodeCanvas value={pixCopyPaste} size={220} includeMargin />
               </div>
 
+              {pixTimeLeftMs === 0 ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-red-400">
+                    PIX EXPIRADO • GERE UM NOVO
+                  </p>
+                </div>
+              ) : null}
+
               <div className="grid gap-2">
-                <Label className="text-sm">Pix copia e cola</Label>
-                <div className="glass rounded-2xl p-3 ring-1 ring-border/60">
-                  <p className="break-all text-xs text-muted-foreground">{pixCopyPaste}</p>
+                <Label className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">PIX COPIA E COLA</Label>
+                <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+                  <p className="break-all text-xs font-medium text-gray-300">{pixCopyPaste}</p>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Não consegui carregar o código PIX.</p>
+            <p className="text-sm text-gray-400">Não consegui carregar o código PIX.</p>
           )}
 
           <DialogFooter className="gap-2 sm:gap-3">
             <Button
               variant="secondary"
-                className="rounded-none cut-corners skew-wrap"
+              className="h-12 flex-1 rounded-xl border border-white/10 bg-white/5 text-xs font-black uppercase italic tracking-widest hover:bg-white/10"
               onClick={async () => {
                 if (!pixCopyPaste) return;
                 try {
@@ -709,28 +783,28 @@ const Index = () => {
                   toast({ title: "Não consegui copiar", description: "Copie manualmente o código PIX." });
                 }
               }}
-              disabled={!pixCopyPaste}
+              disabled={!pixCopyPaste || pixTimeLeftMs === 0}
             >
-                <span className="skew-inner">COPIAR CÓDIGO</span>
+              COPIAR
             </Button>
 
             <Button
               variant="secondary"
-              className="rounded-none cut-corners skew-wrap"
+              className="h-12 flex-1 rounded-xl border border-white/10 bg-white/5 text-xs font-black uppercase italic tracking-widest hover:bg-white/10"
               onClick={() => void checkPaymentStatus()}
               disabled={checkingPix || pixStatus === "approved"}
             >
-              <span className="skew-inner">JÁ PAGUEI</span>
+              {checkingPix ? "VERIFICANDO..." : "JÁ PAGUEI"}
             </Button>
 
             <Button
-                className="rounded-none cut-corners skew-wrap animate-neon-pulse"
+              className="h-12 flex-1 rounded-xl bg-primary text-black text-xs font-black uppercase italic tracking-widest hover:bg-primary/90 shadow-[0_0_20px_rgba(34,197,94,0.25)]"
               onClick={() => {
                 setPixOpen(false);
                 navigate("/ranking");
               }}
             >
-                <span className="skew-inner">VER RANKING</span>
+              VER RANKING
             </Button>
           </DialogFooter>
         </DialogContent>

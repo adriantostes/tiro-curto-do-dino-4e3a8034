@@ -25,9 +25,9 @@ export async function cartolaSearchTeams(q: string) {
   return (data as CartolaTeamSearchItem[]) ?? [];
 }
 
-export async function cartolaTeamScore(teamId: number) {
+export async function cartolaTeamScore(teamId: number, round?: number | null) {
   const { data, error } = await supabase.functions.invoke("cartola-proxy", {
-    body: { action: "team_score", teamId },
+    body: { action: "team_score", teamId, round: round ?? undefined },
   });
   if (error) throw error;
   return data as any;
