@@ -128,6 +128,7 @@ export type Database = {
         Row: {
           amount_cents: number
           created_at: string
+          expires_at: string | null
           id: string
           participant_id: string | null
           pix_copy_paste: string | null
@@ -142,6 +143,7 @@ export type Database = {
         Insert: {
           amount_cents?: number
           created_at?: string
+          expires_at?: string | null
           id?: string
           participant_id?: string | null
           pix_copy_paste?: string | null
@@ -156,6 +158,7 @@ export type Database = {
         Update: {
           amount_cents?: number
           created_at?: string
+          expires_at?: string | null
           id?: string
           participant_id?: string | null
           pix_copy_paste?: string | null
@@ -242,6 +245,60 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_reservations: {
+        Row: {
+          cartola_team_id: number
+          created_at: string
+          expires_at: string
+          id: string
+          league_id: string
+          payment_id: string | null
+          team_name: string
+          team_shield_url: string | null
+          team_slug: string | null
+          user_id: string
+        }
+        Insert: {
+          cartola_team_id: number
+          created_at?: string
+          expires_at: string
+          id?: string
+          league_id: string
+          payment_id?: string | null
+          team_name: string
+          team_shield_url?: string | null
+          team_slug?: string | null
+          user_id: string
+        }
+        Update: {
+          cartola_team_id?: number
+          created_at?: string
+          expires_at?: string
+          id?: string
+          league_id?: string
+          payment_id?: string | null
+          team_name?: string
+          team_shield_url?: string | null
+          team_slug?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_reservations_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_reservations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
             referencedColumns: ["id"]
           },
         ]
